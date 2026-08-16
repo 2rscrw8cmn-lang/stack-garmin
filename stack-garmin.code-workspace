@@ -1,0 +1,7 @@
+{
+  "folders": [
+    { "name": "STACK Watch Face", "path": "watch-face" },
+    { "name": "STACK Run Field", "path": "run-field" },
+    { "name": "STACK Garmin Docs", "path": "." }
+  ]
+}
