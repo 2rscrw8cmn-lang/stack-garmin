@@ -1,0 +1,8 @@
+**/bin/
+**/obj/
+*.prg
+*.iq
+*.debug.xml
+*.key
+.DS_Store
+.vscode/settings.json
