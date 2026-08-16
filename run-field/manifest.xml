@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<iq:manifest version="3" xmlns:iq="http://www.garmin.com/xml/connectiq">
+  <iq:application entry="StackRunFieldApp" id="5826C166230E437B9DADD30874E88B42" launcherIcon="@Drawables.LauncherIcon" minSdkVersion="5.2.0" name="@Strings.AppName" type="datafield">
+    <iq:products>
+      <iq:product id="fr265"/>
+    </iq:products>
+    <iq:permissions>
+      <iq:uses-permission id="UserProfile"/>
+      <iq:uses-permission id="Communications"/>
+    </iq:permissions>
+    <iq:languages><iq:language>eng</iq:language></iq:languages>
+    <iq:barrels/>
+  </iq:application>
+</iq:manifest>
