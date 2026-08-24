@@ -38,9 +38,9 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         dc.drawText(84, 278, Gfx.FONT_XTINY, steps.format("%d"), Gfx.TEXT_JUSTIFY_CENTER);
 
         dc.setColor(StackTheme.LIME, StackTheme.BG);
-dc.drawText(332, 244, Gfx.FONT_XTINY, "BAT", Gfx.TEXT_JUSTIFY_CENTER);
-dc.setColor(StackTheme.TEXT, StackTheme.BG);
-dc.drawText(332, 278, Gfx.FONT_XTINY, battery.format("%.0f%%"), Gfx.TEXT_JUSTIFY_CENTER);
+        dc.drawText(332, 244, Gfx.FONT_XTINY, "BAT", Gfx.TEXT_JUSTIFY_CENTER);
+        dc.setColor(StackTheme.TEXT, StackTheme.BG);
+        dc.drawText(332, 278, Gfx.FONT_XTINY, battery.format("%.0f%%"), Gfx.TEXT_JUSTIFY_CENTER);
     }
 
     function drawTower(dc, cx, y) {
