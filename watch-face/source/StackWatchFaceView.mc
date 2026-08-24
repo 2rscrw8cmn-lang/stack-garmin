@@ -15,16 +15,13 @@ class StackWatchFaceView extends WatchUi.WatchFace {
     function initialize() {
         WatchFace.initialize();
 
-        // Forerunner 265 supports scalable system fonts. Load them once instead of
-        // rebuilding display geometry every update. BionicBold is number-only and
-        // is the first display-font candidate from WATCH_FACE_LAYOUT_SPEC.md.
-        _displayFont = Gfx.getVectorFont({ :face => "BionicBold", :size => 158 });
-        _utilityFont = Gfx.getVectorFont({ :face => "RobotoCondensedBold", :size => 24 });
-        _utilitySmallFont = Gfx.getVectorFont({ :face => "RobotoCondensedBold", :size => 21 });
-        _aodFont = Gfx.getVectorFont({ :face => "RobotoCondensedRegular", :size => 82 });
+        // BionicBold is the approved primary display face for OFFSET on fr265.
+        // Load vector fonts once and keep the render path lightweight.
+        _displayFont = Gfx.getVectorFont({ :face => "BionicBold", :size => 220 });
+        _utilityFont = Gfx.getVectorFont({ :face => "RobotoCondensedBold", :size => 23 });
+        _utilitySmallFont = Gfx.getVectorFont({ :face => "RobotoCondensedBold", :size => 19 });
+        _aodFont = Gfx.getVectorFont({ :face => "RobotoCondensedRegular", :size => 88 });
 
-        // Defensive fallbacks. These should not be used on fr265, but they keep
-        // the face alive if a simulator/device font resource is unexpectedly absent.
         if (_displayFont == null) { _displayFont = Gfx.FONT_NUMBER_HOT; }
         if (_utilityFont == null) { _utilityFont = Gfx.FONT_XTINY; }
         if (_utilitySmallFont == null) { _utilitySmallFont = Gfx.FONT_XTINY; }
@@ -53,38 +50,36 @@ class StackWatchFaceView extends WatchUi.WatchFace {
     }
 
     function drawOffset(dc, hour, minute) {
-        var displayHour = getDisplayHour(hour);
-        var hourText = twoDigits(displayHour);
+        var hourText = displayHourText(hour);
         var minuteText = twoDigits(minute);
 
-        // Top row stays within the circular safe zone.
         drawDateBadge(dc);
-        drawBattery(dc, 290, 83);
+        drawBattery(dc, 286, 80);
 
-        // Real scalable typography replaces the geometric prototype digits.
-        // Position each two-digit string as one measured visual mass.
+        // OFFSET is one diagonal typographic composition, not two separate rows.
+        // Oversize the two masses and let the circular canvas provide the crop/energy.
         dc.setColor(StackTheme.TEXT, StackTheme.BG);
-        dc.drawText(122, 72, _displayFont, hourText, Gfx.TEXT_JUSTIFY_CENTER);
+        dc.drawText(118, 42, _displayFont, hourText, Gfx.TEXT_JUSTIFY_CENTER);
 
         dc.setColor(StackTheme.LIME, StackTheme.BG);
-        dc.drawText(292, 210, _displayFont, minuteText, Gfx.TEXT_JUSTIFY_CENTER);
+        dc.drawText(298, 172, _displayFont, minuteText, Gfx.TEXT_JUSTIFY_CENTER);
 
-        // Colon is independent punctuation between the two masses.
-        dc.fillCircle(211, 177, 7);
-        dc.fillCircle(211, 204, 7);
+        // Small independent punctuation between the two masses.
+        dc.fillCircle(211, 166, 7);
+        dc.fillCircle(211, 193, 7);
 
-        drawSteps(dc, 47, 268);
+        drawSteps(dc, 50, 274);
         drawDecorativeBlocks(dc);
     }
 
-    function getDisplayHour(hour) {
+    function displayHourText(hour) {
         var settings = Sys.getDeviceSettings();
         if (settings != null && !settings.is24Hour) {
             var twelve = hour % 12;
             if (twelve == 0) { twelve = 12; }
-            return twelve;
+            return twelve.toString();
         }
-        return hour;
+        return twoDigits(hour);
     }
 
     function twoDigits(value) {
@@ -102,14 +97,14 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         }
 
         var textW = dc.getTextWidthInPixels(label, _utilityFont);
-        var badgeW = textW + 28;
-        var badgeH = 34;
+        var badgeW = textW + 24;
+        var badgeH = 31;
         var badgeX = 208 - (badgeW / 2).toNumber();
 
         dc.setColor(StackTheme.BLUE, StackTheme.BG);
-        dc.fillRoundedRectangle(badgeX, 28, badgeW, badgeH, 8);
+        dc.fillRoundedRectangle(badgeX, 26, badgeW, badgeH, 7);
         dc.setColor(StackTheme.TEXT, StackTheme.BLUE);
-        dc.drawText(208, 31, _utilityFont, label, Gfx.TEXT_JUSTIFY_CENTER);
+        dc.drawText(208, 28, _utilityFont, label, Gfx.TEXT_JUSTIFY_CENTER);
     }
 
     function weekdayLabel(day) {
@@ -131,17 +126,17 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         }
 
         dc.setColor(StackTheme.LIME, StackTheme.BG);
-        dc.drawRoundedRectangle(x, y + 4, 26, 12, 3);
-        dc.fillRectangle(x + 26, y + 7, 3, 6);
+        dc.drawRoundedRectangle(x, y + 4, 24, 11, 3);
+        dc.fillRectangle(x + 24, y + 7, 3, 5);
 
-        var fill = ((battery * 18) / 100).toNumber();
+        var fill = ((battery * 16) / 100).toNumber();
         if (fill > 0) {
-            dc.fillRoundedRectangle(x + 4, y + 8, fill, 4, 1);
+            dc.fillRoundedRectangle(x + 4, y + 8, fill, 3, 1);
         }
 
         var label = battery.toString() + "%";
         dc.setColor(StackTheme.TEXT, StackTheme.BG);
-        dc.drawText(x + 36, y, _utilitySmallFont, label, Gfx.TEXT_JUSTIFY_LEFT);
+        dc.drawText(x + 34, y, _utilitySmallFont, label, Gfx.TEXT_JUSTIFY_LEFT);
     }
 
     function drawSteps(dc, x, y) {
@@ -160,43 +155,38 @@ class StackWatchFaceView extends WatchUi.WatchFace {
             label = steps.toString();
         }
 
-        // Compact STACK runner mark and value as one horizontal utility object.
+        // Compact chunky shoe/run mark. One object, one value, no label.
         dc.setColor(StackTheme.BLUE, StackTheme.BG);
-        dc.fillCircle(x + 9, y + 7, 4);
-        dc.fillRoundedRectangle(x + 6, y + 13, 6, 17, 2);
-        dc.fillRoundedRectangle(x + 11, y + 16, 17, 5, 2);
-        dc.fillRoundedRectangle(x, y + 27, 15, 5, 2);
-        dc.fillRoundedRectangle(x + 16, y + 27, 16, 5, 2);
+        dc.fillRoundedRectangle(x, y + 13, 32, 9, 4);
+        dc.fillRoundedRectangle(x + 5, y + 6, 14, 10, 3);
+        dc.fillRoundedRectangle(x + 17, y + 10, 12, 9, 3);
+        dc.fillRoundedRectangle(x + 27, y + 17, 10, 5, 2);
 
         dc.setColor(StackTheme.TEXT, StackTheme.BG);
-        dc.drawText(x + 40, y + 5, _utilityFont, label, Gfx.TEXT_JUSTIFY_LEFT);
-
-        dc.setColor(StackTheme.YELLOW, StackTheme.BG);
-        dc.fillCircle(x + 6, y + 51, 8);
+        dc.drawText(x + 45, y + 3, _utilityFont, label, Gfx.TEXT_JUSTIFY_LEFT);
     }
 
     function drawDecorativeBlocks(dc) {
-        // Decorative only; neither shape carries a metric/status meaning.
+        // Purple punctuation fills the upper-right negative space.
         dc.setColor(StackTheme.PURPLE, StackTheme.BG);
-        dc.fillRoundedRectangle(333, 137, 25, 28, 4);
-        dc.fillRoundedRectangle(349, 153, 25, 28, 4);
+        dc.fillRoundedRectangle(335, 128, 24, 28, 4);
+        dc.fillRoundedRectangle(351, 144, 24, 28, 4);
 
+        // Cyan punctuation anchors the lower-left without becoming another metric.
         dc.setColor(StackTheme.CYAN, StackTheme.BG);
-        dc.fillRoundedRectangle(103, 350, 77, 19, 4);
-        dc.fillRoundedRectangle(158, 334, 22, 35, 4);
+        dc.fillRoundedRectangle(96, 350, 80, 19, 4);
+        dc.fillRoundedRectangle(153, 333, 23, 36, 4);
     }
 
     function drawAlwaysOn(dc, hour, minute) {
-        var displayHour = getDisplayHour(hour);
-        var hourText = twoDigits(displayHour);
+        var hourText = displayHourText(hour);
         var minuteText = twoDigits(minute);
 
-        // AOD is a separate, quiet typographic composition.
         dc.setColor(StackTheme.AOD, StackTheme.BG);
-        dc.drawText(208, 95, _aodFont, hourText, Gfx.TEXT_JUSTIFY_CENTER);
-        dc.drawText(208, 220, _aodFont, minuteText, Gfx.TEXT_JUSTIFY_CENTER);
-        dc.fillCircle(208, 194, 3);
-        dc.fillCircle(208, 207, 3);
+        dc.drawText(208, 88, _aodFont, hourText, Gfx.TEXT_JUSTIFY_CENTER);
+        dc.drawText(208, 214, _aodFont, minuteText, Gfx.TEXT_JUSTIFY_CENTER);
+        dc.fillCircle(208, 190, 3);
+        dc.fillCircle(208, 204, 3);
 
         dc.setColor(StackTheme.LIME, StackTheme.BG);
         dc.fillRoundedRectangle(195, 356, 26, 3, 1);
