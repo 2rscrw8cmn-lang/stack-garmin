@@ -7,9 +7,28 @@ using Toybox.WatchUi as WatchUi;
 
 class StackWatchFaceView extends WatchUi.WatchFace {
     var _sleeping = false;
+    var _displayFont;
+    var _utilityFont;
+    var _utilitySmallFont;
+    var _aodFont;
 
     function initialize() {
         WatchFace.initialize();
+
+        // Forerunner 265 supports scalable system fonts. Load them once instead of
+        // rebuilding display geometry every update. BionicBold is number-only and
+        // is the first display-font candidate from WATCH_FACE_LAYOUT_SPEC.md.
+        _displayFont = Gfx.getVectorFont({ :face => "BionicBold", :size => 158 });
+        _utilityFont = Gfx.getVectorFont({ :face => "RobotoCondensedBold", :size => 24 });
+        _utilitySmallFont = Gfx.getVectorFont({ :face => "RobotoCondensedBold", :size => 21 });
+        _aodFont = Gfx.getVectorFont({ :face => "RobotoCondensedRegular", :size => 82 });
+
+        // Defensive fallbacks. These should not be used on fr265, but they keep
+        // the face alive if a simulator/device font resource is unexpectedly absent.
+        if (_displayFont == null) { _displayFont = Gfx.FONT_NUMBER_HOT; }
+        if (_utilityFont == null) { _utilityFont = Gfx.FONT_XTINY; }
+        if (_utilitySmallFont == null) { _utilitySmallFont = Gfx.FONT_XTINY; }
+        if (_aodFont == null) { _aodFont = Gfx.FONT_NUMBER_MEDIUM; }
     }
 
     function onEnterSleep() {
@@ -35,29 +54,26 @@ class StackWatchFaceView extends WatchUi.WatchFace {
 
     function drawOffset(dc, hour, minute) {
         var displayHour = getDisplayHour(hour);
-        var h1 = (displayHour / 10).toNumber();
-        var h2 = displayHour % 10;
-        var m1 = (minute / 10).toNumber();
-        var m2 = minute % 10;
+        var hourText = twoDigits(displayHour);
+        var minuteText = twoDigits(minute);
 
-        // Compact top row. Keep both objects comfortably inside the circular safe area.
+        // Top row stays within the circular safe zone.
         drawDateBadge(dc);
-        drawBattery(dc, 276, 48);
+        drawBattery(dc, 290, 83);
 
-        // The time is the poster. Push the two groups away from center so the
-        // composition feels intentionally offset instead of arranged on a grid.
-        drawDisplayDigit(dc, h1, 12, 76, 92, 154, 31, StackTheme.TEXT);
-        drawDisplayDigit(dc, h2, 108, 76, 92, 154, 31, StackTheme.TEXT);
+        // Real scalable typography replaces the geometric prototype digits.
+        // Position each two-digit string as one measured visual mass.
+        dc.setColor(StackTheme.TEXT, StackTheme.BG);
+        dc.drawText(122, 72, _displayFont, hourText, Gfx.TEXT_JUSTIFY_CENTER);
 
-        drawDisplayDigit(dc, m1, 202, 214, 88, 154, 31, StackTheme.LIME);
-        drawDisplayDigit(dc, m2, 298, 214, 88, 154, 31, StackTheme.LIME);
-
-        // Graphic punctuation lives between the masses rather than attaching to either one.
         dc.setColor(StackTheme.LIME, StackTheme.BG);
-        dc.fillCircle(216, 169, 10);
-        dc.fillCircle(216, 203, 10);
+        dc.drawText(292, 210, _displayFont, minuteText, Gfx.TEXT_JUSTIFY_CENTER);
 
-        drawSteps(dc, 38, 260);
+        // Colon is independent punctuation between the two masses.
+        dc.fillCircle(211, 177, 7);
+        dc.fillCircle(211, 204, 7);
+
+        drawSteps(dc, 47, 268);
         drawDecorativeBlocks(dc);
     }
 
@@ -65,27 +81,35 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         var settings = Sys.getDeviceSettings();
         if (settings != null && !settings.is24Hour) {
             var twelve = hour % 12;
-            if (twelve == 0) {
-                twelve = 12;
-            }
+            if (twelve == 0) { twelve = 12; }
             return twelve;
         }
         return hour;
     }
 
+    function twoDigits(value) {
+        if (value < 10) {
+            return "0" + value.toString();
+        }
+        return value.toString();
+    }
+
     function drawDateBadge(dc) {
-        // FORMAT_SHORT guarantees a numeric day_of_week (1=Sun ... 7=Sat),
-        // which keeps the badge deterministic across device language settings.
         var label = "TODAY";
         var info = Gregorian.info(Time.now(), Time.FORMAT_SHORT);
         if (info != null) {
             label = weekdayLabel(info.day_of_week) + " " + info.day.toString();
         }
 
+        var dims = dc.getTextDimensions(label, _utilityFont);
+        var badgeW = dims[0] + 28;
+        var badgeH = 34;
+        var badgeX = 208 - (badgeW / 2).toNumber();
+
         dc.setColor(StackTheme.BLUE, StackTheme.BG);
-        dc.fillRoundedRectangle(118, 26, 128, 42, 9);
+        dc.fillRoundedRectangle(badgeX, 28, badgeW, badgeH, 8);
         dc.setColor(StackTheme.TEXT, StackTheme.BLUE);
-        dc.drawText(182, 35, Gfx.FONT_XTINY, label, Gfx.TEXT_JUSTIFY_CENTER);
+        dc.drawText(208, 31, _utilityFont, label, Gfx.TEXT_JUSTIFY_CENTER);
     }
 
     function weekdayLabel(day) {
@@ -107,18 +131,17 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         }
 
         dc.setColor(StackTheme.LIME, StackTheme.BG);
-        dc.drawRoundedRectangle(x, y, 28, 13, 3);
-        dc.fillRectangle(x + 28, y + 4, 4, 5);
+        dc.drawRoundedRectangle(x, y + 4, 26, 12, 3);
+        dc.fillRectangle(x + 26, y + 7, 3, 6);
 
-        var fill = ((battery * 20) / 100).toNumber();
+        var fill = ((battery * 18) / 100).toNumber();
         if (fill > 0) {
-            dc.fillRoundedRectangle(x + 4, y + 4, fill, 5, 1);
+            dc.fillRoundedRectangle(x + 4, y + 8, fill, 4, 1);
         }
 
-        var batteryLabel = battery.toString() + "%";
+        var label = battery.toString() + "%";
         dc.setColor(StackTheme.TEXT, StackTheme.BG);
-        dc.drawText(x + 39, y - 7, Gfx.FONT_XTINY,
-            batteryLabel, Gfx.TEXT_JUSTIFY_LEFT);
+        dc.drawText(x + 36, y, _utilitySmallFont, label, Gfx.TEXT_JUSTIFY_LEFT);
     }
 
     function drawSteps(dc, x, y) {
@@ -137,160 +160,45 @@ class StackWatchFaceView extends WatchUi.WatchFace {
             label = steps.toString();
         }
 
-        // Compact runner + value unit. Keep the blue mark and white number on one line.
+        // Compact STACK runner mark and value as one horizontal utility object.
         dc.setColor(StackTheme.BLUE, StackTheme.BG);
-        dc.fillCircle(x + 10, y + 7, 5);
-        dc.fillRoundedRectangle(x + 7, y + 14, 7, 18, 2);
-        dc.fillRoundedRectangle(x + 12, y + 17, 18, 6, 2);
-        dc.fillRoundedRectangle(x + 1, y + 28, 16, 6, 2);
-        dc.fillRoundedRectangle(x + 18, y + 28, 17, 6, 2);
+        dc.fillCircle(x + 9, y + 7, 4);
+        dc.fillRoundedRectangle(x + 6, y + 13, 6, 17, 2);
+        dc.fillRoundedRectangle(x + 11, y + 16, 17, 5, 2);
+        dc.fillRoundedRectangle(x, y + 27, 15, 5, 2);
+        dc.fillRoundedRectangle(x + 16, y + 27, 16, 5, 2);
 
         dc.setColor(StackTheme.TEXT, StackTheme.BG);
-        dc.drawText(x + 43, y + 8, Gfx.FONT_SMALL, label, Gfx.TEXT_JUSTIFY_LEFT);
+        dc.drawText(x + 40, y + 5, _utilityFont, label, Gfx.TEXT_JUSTIFY_LEFT);
 
-        // Yellow punctuation sits below the unit, echoing the approved mockup.
         dc.setColor(StackTheme.YELLOW, StackTheme.BG);
-        dc.fillCircle(x + 9, y + 60, 11);
+        dc.fillCircle(x + 6, y + 51, 8);
     }
 
     function drawDecorativeBlocks(dc) {
+        // Decorative only; neither shape carries a metric/status meaning.
         dc.setColor(StackTheme.PURPLE, StackTheme.BG);
-        dc.fillRoundedRectangle(330, 127, 30, 35, 4);
-        dc.fillRoundedRectangle(349, 146, 30, 35, 4);
+        dc.fillRoundedRectangle(333, 137, 25, 28, 4);
+        dc.fillRoundedRectangle(349, 153, 25, 28, 4);
 
         dc.setColor(StackTheme.CYAN, StackTheme.BG);
-        dc.fillRoundedRectangle(104, 349, 92, 23, 4);
-        dc.fillRoundedRectangle(166, 331, 30, 41, 4);
+        dc.fillRoundedRectangle(103, 350, 77, 19, 4);
+        dc.fillRoundedRectangle(158, 334, 22, 35, 4);
     }
 
     function drawAlwaysOn(dc, hour, minute) {
         var displayHour = getDisplayHour(hour);
-        var h1 = (displayHour / 10).toNumber();
-        var h2 = displayHour % 10;
-        var m1 = (minute / 10).toNumber();
-        var m2 = minute % 10;
+        var hourText = twoDigits(displayHour);
+        var minuteText = twoDigits(minute);
 
-        drawDisplayDigit(dc, h1, 104, 102, 52, 88, 13, StackTheme.AOD);
-        drawDisplayDigit(dc, h2, 162, 102, 52, 88, 13, StackTheme.AOD);
-        drawDisplayDigit(dc, m1, 204, 220, 52, 88, 13, StackTheme.AOD);
-        drawDisplayDigit(dc, m2, 262, 220, 52, 88, 13, StackTheme.AOD);
-
+        // AOD is a separate, quiet typographic composition.
         dc.setColor(StackTheme.AOD, StackTheme.BG);
+        dc.drawText(208, 95, _aodFont, hourText, Gfx.TEXT_JUSTIFY_CENTER);
+        dc.drawText(208, 220, _aodFont, minuteText, Gfx.TEXT_JUSTIFY_CENTER);
         dc.fillCircle(208, 194, 3);
-        dc.fillCircle(208, 208, 3);
+        dc.fillCircle(208, 207, 3);
 
         dc.setColor(StackTheme.LIME, StackTheme.BG);
-        dc.fillRoundedRectangle(195, 358, 26, 3, 1);
-    }
-
-    function drawDisplayDigit(dc, digit, x, y, w, h, t, color) {
-        dc.setColor(color, StackTheme.BG);
-
-        if (digit == 0) { drawZero(dc, x, y, w, h, t, color); return; }
-        if (digit == 1) { drawOne(dc, x, y, w, h, t, color); return; }
-        if (digit == 2) { drawTwo(dc, x, y, w, h, t, color); return; }
-        if (digit == 3) { drawThree(dc, x, y, w, h, t, color); return; }
-        if (digit == 4) { drawFour(dc, x, y, w, h, t, color); return; }
-        if (digit == 5) { drawFive(dc, x, y, w, h, t, color); return; }
-        if (digit == 6) { drawSix(dc, x, y, w, h, t, color); return; }
-        if (digit == 7) { drawSeven(dc, x, y, w, h, t, color); return; }
-        if (digit == 8) { drawEight(dc, x, y, w, h, t, color); return; }
-        if (digit == 9) { drawNine(dc, x, y, w, h, t, color); }
-    }
-
-    function drawZero(dc, x, y, w, h, t, color) {
-        dc.setColor(color, StackTheme.BG);
-        dc.fillRoundedRectangle(x, y, w, h, 6);
-        dc.setColor(StackTheme.BG, StackTheme.BG);
-        dc.fillRoundedRectangle(x + t, y + t, w - (t * 2), h - (t * 2), 2);
-    }
-
-    function drawOne(dc, x, y, w, h, t, color) {
-        dc.setColor(color, StackTheme.BG);
-        var stemX = x + ((w - t) / 2).toNumber();
-        dc.fillRoundedRectangle(stemX, y, t, h, 3);
-        dc.fillRoundedRectangle(stemX - 21, y + 7, 35, t, 3);
-        dc.fillRoundedRectangle(stemX - 18, y + h - t, t + 43, t, 3);
-    }
-
-    function drawTwo(dc, x, y, w, h, t, color) {
-        dc.setColor(color, StackTheme.BG);
-        var half = (h / 2).toNumber();
-        barH(dc, x, y, w, t);
-        barV(dc, x + w - t, y, t, half + 4);
-        barH(dc, x, y + half - (t / 2).toNumber(), w, t);
-        barV(dc, x, y + half - 2, t, half + 2);
-        barH(dc, x, y + h - t, w, t);
-    }
-
-    function drawThree(dc, x, y, w, h, t, color) {
-        dc.setColor(color, StackTheme.BG);
-        var half = (h / 2).toNumber();
-        barV(dc, x + w - t, y, t, h);
-        barH(dc, x, y, w, t);
-        barH(dc, x + 5, y + half - (t / 2).toNumber(), w - 5, t);
-        barH(dc, x, y + h - t, w, t);
-    }
-
-    function drawFour(dc, x, y, w, h, t, color) {
-        dc.setColor(color, StackTheme.BG);
-        var half = (h / 2).toNumber();
-        barV(dc, x, y, t, half + 3);
-        barV(dc, x + w - t, y, t, h);
-        barH(dc, x, y + half - (t / 2).toNumber(), w, t);
-    }
-
-    function drawFive(dc, x, y, w, h, t, color) {
-        dc.setColor(color, StackTheme.BG);
-        var half = (h / 2).toNumber();
-        barH(dc, x, y, w, t);
-        barV(dc, x, y, t, half + 4);
-        barH(dc, x, y + half - (t / 2).toNumber(), w, t);
-        barV(dc, x + w - t, y + half - 1, t, half + 1);
-        barH(dc, x, y + h - t, w, t);
-    }
-
-    function drawSix(dc, x, y, w, h, t, color) {
-        dc.setColor(color, StackTheme.BG);
-        var half = (h / 2).toNumber();
-        barH(dc, x, y, w, t);
-        barV(dc, x, y, t, h);
-        barH(dc, x, y + half - (t / 2).toNumber(), w, t);
-        barV(dc, x + w - t, y + half - 1, t, half + 1);
-        barH(dc, x, y + h - t, w, t);
-    }
-
-    function drawSeven(dc, x, y, w, h, t, color) {
-        dc.setColor(color, StackTheme.BG);
-        barH(dc, x, y, w, t);
-        barV(dc, x + w - t, y, t, h);
-    }
-
-    function drawEight(dc, x, y, w, h, t, color) {
-        dc.setColor(color, StackTheme.BG);
-        dc.fillRoundedRectangle(x, y, w, h, 6);
-        dc.setColor(StackTheme.BG, StackTheme.BG);
-        var innerW = w - (t * 2);
-        var innerH = ((h - (t * 3)) / 2).toNumber();
-        dc.fillRoundedRectangle(x + t, y + t, innerW, innerH, 2);
-        dc.fillRoundedRectangle(x + t, y + (t * 2) + innerH, innerW, innerH, 2);
-    }
-
-    function drawNine(dc, x, y, w, h, t, color) {
-        dc.setColor(color, StackTheme.BG);
-        var half = (h / 2).toNumber();
-        barH(dc, x, y, w, t);
-        barV(dc, x, y, t, half + 3);
-        barV(dc, x + w - t, y, t, h);
-        barH(dc, x, y + half - (t / 2).toNumber(), w, t);
-        barH(dc, x, y + h - t, w, t);
-    }
-
-    function barH(dc, x, y, w, h) {
-        dc.fillRoundedRectangle(x, y, w, h, 3);
-    }
-
-    function barV(dc, x, y, w, h) {
-        dc.fillRoundedRectangle(x, y, w, h, 3);
+        dc.fillRoundedRectangle(195, 356, 26, 3, 1);
     }
 }
