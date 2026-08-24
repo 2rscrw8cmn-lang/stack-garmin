@@ -15,7 +15,7 @@
 - [ ] Build the oversized asymmetric `HH : MM` composition
 - [ ] Add day/date, battery, temperature/weather, and one optional activity metric
 - [ ] Create the first reusable decorative STACK block/icon set
-- [ ] Add custom numeric display font resources
+- [x] Add custom numeric display typography (polygon numerals, no font resource)
 
 ## M2 — AMOLED + Physical Watch Validation
 - [ ] Implement a deliberately simplified low-power / always-on state

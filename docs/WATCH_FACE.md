@@ -44,8 +44,8 @@ OFFSET is the first and canonical layout.
 - Time is the dominant visual element and may approach the circular safe-area edges.
 - Day/date lives in one compact bright badge.
 - Battery sits in the upper-right utility zone.
-- Weather and steps form a purposeful lower-left utility stack.
-- One purple STACK block occupies negative space as pure graphic punctuation.
+- A blue running mark and a weather mark form a purposeful lower-left utility stack.
+- A cyan block and a purple block occupy negative space as pure graphic punctuation.
 - No on-face STACK wordmark is required; the visual system itself is the branding.
 
 ### Required v1 information
@@ -54,9 +54,12 @@ OFFSET is the first and canonical layout.
 2. Day + date
 3. Battery
 4. Current temperature/weather when available
-5. Steps
 
 Do not add additional data simply because Garmin exposes it.
+
+Steps are **not** shown in OFFSET v1. The lower-left blue runner is a STACK
+pictogram, not a labelled metric. A step count may return later as a different
+layout or a configurable option.
 
 ## Visual language
 
@@ -80,24 +83,44 @@ A single face should normally use black + white + lime + a limited set of second
 
 Current OFFSET roles:
 
-- blue — date badge
+- blue — date badge and the running mark
 - yellow — weather
-- cyan — steps/run mark
+- cyan — decorative punctuation
 - purple — decorative punctuation
 
-The old Garmin-specific orange / blue / muted-lime palette is deprecated.
+The old Garmin-specific orange / blue / muted-lime palette is deprecated, and
+orange and pink are not used by OFFSET at all.
 
 ### Typography — LOCKED FOR v1
 
 The Forerunner 265 supports scalable system fonts at explicit pixel sizes. Its fixed `FONT_XTINY` is already about 34 px tall, so Garmin's named bitmap sizes are not appropriate for small metadata by name alone.
 
-#### Display numerals
+#### Display numerals — STACK NUMERALS
 
-**BionicBold is the v1 display face.**
+**The v1 display face is `StackDigits`, a purpose-built numeral set drawn as
+convex polygons.**
 
-Simulator testing established that it provides the right combination of weight, width, readability, and personality without consuming memory on a custom bitmap font.
+BionicBold was tested as the baseline candidate and rejected on fidelity. Measured
+against the reference artwork it is a rounded grotesque: too light, too soft in
+the corners, and its `1` is a thin flag-and-stem. The reference numerals are
+poster-weight with chamfered outer corners and large counters, which no device
+font on the Forerunner 265 provides.
 
-Current target size: **238 px**.
+`source/StackDigits.mc` builds each of `0`–`9` from convex polygons expressed as
+fractions of the cap height. Every emitted shape is convex because Garmin's
+`fillPolygon` does not reliably fill concave outlines; counters are cut with
+mitred frame pieces instead.
+
+Why polygons rather than a filtered custom bitmap font:
+
+- exact silhouette control at any cap height
+- no font resource in the 128 KiB budget (measured steady state: **13.1 kB**)
+- analytically known metrics, so placement never guesses a text origin
+- scales cleanly between the OFFSET and always-on cap heights
+
+The numerals are **tabular**: every digit shares one advance and `1` is drawn
+narrow inside it. That means every hour and minute pair is exactly the same
+width, so the composition never resizes as the clock ticks.
 
 The main time must:
 
@@ -109,16 +132,13 @@ The main time must:
 
 The leading zero is intentional in both 12-hour and 24-hour mode because it stabilizes the upper-left visual mass.
 
-The hand-built geometric digit renderer is retired.
-
 #### Utility type
 
 Use scalable `RobotoCondensedBold` at explicit sizes:
 
-- day/date: ~24 px
-- battery: ~20 px
-- weather: ~24 px
-- steps: ~24 px
+- day/date: 24 px
+- battery: 26 px
+- weather/temperature: 48 px
 
 Measure variable-width strings before final positioning where useful.
 
@@ -128,9 +148,10 @@ The face uses a small graphic kit rather than a Build tower.
 
 Current v1 pieces:
 
-- compact battery outline/bar
-- yellow STACK-style sun
-- cyan chunky shoe/run mark
+- compact battery outline/bar with a terminal nub
+- solid yellow weather disc
+- chunky blue running pictogram, built from tapered convex quads
+- one cyan stepped block
 - one purple stepped block
 
 Functional pieces should have a clear job. Decorative pieces should be sparse and semantically inert.
@@ -145,8 +166,8 @@ Avoid conventional labels such as:
 
 Prefer direct graphic treatment:
 
-- cyan shoe + `6.2K`
-- yellow sun + `84°`
+- blue runner, no numeric value in v1
+- yellow disc + `84°`
 - lime battery symbol + `82%`
 
 Color and geometry should help recognition, but the numeric value remains readable.
@@ -156,7 +177,6 @@ Current v1 data comes only from Garmin-local APIs:
 - clock — `System`
 - date — `Gregorian`
 - battery — `System`
-- steps — `ActivityMonitor`
 - weather — cached `Weather` data
 
 No STACK connection is required.
@@ -181,10 +201,13 @@ Always-on mode is a deliberately different composition, not a dim copy of the fu
 
 Keep it mostly black with:
 
-- simplified thin gray time
-- day/date if luminance testing permits
-- at most one tiny lime accent detail
-- no weather, steps, battery, or decorative block field in v1 AOD
+- gray time stacked vertically: hour, colon, minute
+- gray `MON 24` toward the bottom
+- one tiny lime underline beneath the date
+- no weather, battery, runner, or decorative blocks
+
+Measured lit-pixel budget inside the display circle: **9.0%**, under Garmin's
+10% always-on guidance. Any AOD change must be re-measured against that ceiling.
 
 The face must remain readable while respecting Garmin AMOLED low-power constraints and burn-in guidance.
 
@@ -230,18 +253,22 @@ The v1 face is successful when:
 - all critical content respects the project round-screen safe area
 - current STACK colors replace the legacy Garmin palette
 - the tower is removed
-- BionicBold owns the main time
+- StackDigits owns the main time
 - two-digit hours remain visually balanced across the full day
-- weather and steps feel like intentional utility objects, not filler
+- weather feels like an intentional utility object, not filler
+- no step count appears anywhere in OFFSET
 - high-power and low-power states both feel intentional
 - steady-state memory leaves meaningful headroom under the 128 KiB watch-face limit
 - no STACK account or network connection is required
 
+## Status
+
+The target-fidelity pass is complete. OFFSET matches the reference artwork in
+the simulator at `10:42`, `08:58`, `11:11`, `23:59` and in always-on, with no
+clipping across all 24 × 60 times and 13.1 kB of 123.9 kB used.
+
 ## Immediate next milestone
 
-1. validate the 238 px BionicBold composition across the standard time grid
-2. confirm cached weather behavior in simulator and on-device
-3. tune only optical placement/scale from those results
-4. profile steady-state memory
-5. validate AOD with Garmin's heat map
-6. then consider accent-color settings or alternate layouts
+1. confirm cached weather behaviour on-device, not just in the simulator
+2. re-check the AOD lit-pixel budget with Garmin's heat map on hardware
+3. then consider accent-color settings or alternate layouts

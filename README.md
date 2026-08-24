@@ -21,11 +21,11 @@ v1 direction: **OFFSET**
 
 - oversized asymmetric split time
 - current STACK color system
-- custom chunky numeric typography
+- custom chunky numeric typography, drawn as polygons rather than shipped as a font
 - day/date
 - battery
 - weather/temperature when available
-- one optional activity metric such as steps
+- a blue STACK running mark, carrying no numeric value in v1
 - small reusable STACK graphic pieces
 - intentionally simplified always-on state
 - no Build tower
@@ -86,10 +86,11 @@ stack-garmin/
 
 ## Current priorities
 
-1. Rebuild the watch face around the OFFSET visual direction.
-2. Replace the legacy Garmin watch palette with current STACK tokens.
-3. Add custom display typography and reusable STACK graphic pieces.
-4. Implement an intentional low-power AMOLED state.
-5. Continue validating the run field independently.
+1. ~~Rebuild the watch face around the OFFSET visual direction.~~ done
+2. ~~Replace the legacy Garmin watch palette with current STACK tokens.~~ done
+3. ~~Add custom display typography and reusable STACK graphic pieces.~~ done
+4. ~~Implement an intentional low-power AMOLED state.~~ done
+5. Validate OFFSET and its always-on state on real hardware.
+6. Continue validating the run field independently.
 
 See `docs/ROADMAP.md`.

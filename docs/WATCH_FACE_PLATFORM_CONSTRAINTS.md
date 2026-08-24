@@ -122,12 +122,31 @@ Published scalable faces include:
 
 This is important: we can request a system font at a specific pixel height instead of accepting Garmin's fixed bitmap sizes.
 
-### STACK font strategy
+### STACK font strategy — resolved for v1
+
+The display numerals are **not** a font. `source/StackDigits.mc` draws `0`-`9`
+from convex polygons sized as fractions of the cap height, which keeps the
+silhouette exact and costs no font resource. Measured steady state is 13.1 kB of
+the 123.9 kB reported by the simulator.
+
+Two platform facts drove that decision:
+
+- `Graphics.Dc.fillPolygon` is available on fr265 and is reliable for **convex**
+  polygons only. Concave outlines and rings must be decomposed; the numerals use
+  four mitred frame pieces per counter.
+- `Graphics.Dc.setAntiAlias` is available and is enabled once per update, which
+  is what makes the chamfered edges read cleanly at 140 px.
+
+The original strategy below is retained for the utility type, which still uses
+system vector fonts.
+
 
 Preferred order:
 
 1. **Use a system vector font first.**
-   - Test `BionicBold` for display numerals.
+   - `BionicBold` was tested for display numerals and rejected on fidelity: it is
+     a rounded grotesque, materially lighter and softer than the STACK reference.
+   - System vector fonts remain correct for all utility type.
    - Test `RobotoCondensedBold` as the fallback display face.
    - Use `RobotoCondensedBold` / `RobotoRegular` for 18–26 px metadata.
 2. If neither display font feels sufficiently STACK, introduce **one custom numeric bitmap font** filtered to only `0123456789` and required punctuation.
@@ -143,7 +162,7 @@ These are starting values, not final values:
 - Minute display: 142–160 px
 - Day/date: 22–26 px
 - Battery value: 20–24 px
-- Steps / temperature: 22–26 px
+- Temperature: 48 px
 - Micro labels: avoid where possible; if needed, 16–20 px
 
 Always measure with `getTextDimensions()` before placement.

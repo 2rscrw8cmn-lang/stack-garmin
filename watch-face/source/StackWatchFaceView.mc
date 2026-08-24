@@ -1,4 +1,3 @@
-using Toybox.ActivityMonitor as ActivityMonitor;
 using Toybox.Graphics as Gfx;
 using Toybox.System as Sys;
 using Toybox.Time as Time;
@@ -6,77 +5,265 @@ using Toybox.Time.Gregorian as Gregorian;
 using Toybox.WatchUi as WatchUi;
 using Toybox.Weather as Weather;
 
+//! STACK OFFSET watch face for the Forerunner 265 (416 x 416 AMOLED).
+//!
+//! Composition rule: TIME FIRST, EVERYTHING ELSE IS PUNCTUATION. The hour sits
+//! upper-left in white, the minute lower-right in lime, and the remaining marks
+//! are small graphic notes placed in the negative space around them.
 class StackWatchFaceView extends WatchUi.WatchFace {
+
+    // --- screen -----------------------------------------------------------
+    const CX = 208;
+    const CY = 208;
+
+    // --- optical boxes for the display numbers ----------------------------
+    // Left, top, right, bottom. Numbers are fitted inside and bottom aligned so
+    // the baseline never moves. The boxes were chosen so the widest digit pair
+    // still clears the circular display; see docs/WATCH_FACE_LAYOUT_SPEC.md.
+    const HOUR_L = 46.0;
+    const HOUR_T = 66.0;
+    const HOUR_R = 240.0;
+    const HOUR_B = 206.0;
+
+    const MIN_L = 178.0;
+    const MIN_T = 214.0;
+    const MIN_R = 366.0;
+    const MIN_B = 352.0;
+
+    const COLON_GAP = 14;
+    const COLON_TOP_Y = 152;
+    const COLON_BOT_Y = 190;
+    const COLON_R = 11;
+
+    const AOD_HOUR_B = 162.0;
+    const AOD_MIN_B = 296.0;
+    const AOD_CAP = 80.0;
+
+    // Screenshot harness only. -1 uses the live clock; 1042 pins 10:42.
+    // Must be -1 in anything shipped.
+    const PIN_TIME = -1;
+    // Set true to force the always-on state for capture.
+    const PIN_SLEEP = false;
+
     var _sleeping = false;
-    var _displayFont;
-    var _utilityFont;
-    var _utilitySmallFont;
-    var _aodFont;
+    var _labelFont;
+    var _valueFont;
+    var _tempFont;
 
     function initialize() {
         WatchFace.initialize();
 
-        // BionicBold is now the locked display family for OFFSET.
-        _displayFont = Gfx.getVectorFont({ :face => "BionicBold", :size => 238 });
-        _utilityFont = Gfx.getVectorFont({ :face => "RobotoCondensedBold", :size => 24 });
-        _utilitySmallFont = Gfx.getVectorFont({ :face => "RobotoCondensedBold", :size => 20 });
-        _aodFont = Gfx.getVectorFont({ :face => "RobotoCondensedRegular", :size => 86 });
+        // Fonts load once. The display numerals are drawn as polygons by
+        // StackDigits, so no large font resource is held for the time itself.
+        _labelFont = Gfx.getVectorFont({ :face => "RobotoCondensedBold", :size => 24 });
+        _valueFont = Gfx.getVectorFont({ :face => "RobotoCondensedBold", :size => 26 });
+        _tempFont = Gfx.getVectorFont({ :face => "RobotoCondensedBold", :size => 48 });
 
-        if (_displayFont == null) { _displayFont = Gfx.FONT_NUMBER_HOT; }
-        if (_utilityFont == null) { _utilityFont = Gfx.FONT_XTINY; }
-        if (_utilitySmallFont == null) { _utilitySmallFont = Gfx.FONT_XTINY; }
-        if (_aodFont == null) { _aodFont = Gfx.FONT_NUMBER_MEDIUM; }
+        if (_labelFont == null) { _labelFont = Gfx.FONT_XTINY; }
+        if (_valueFont == null) { _valueFont = Gfx.FONT_XTINY; }
+        if (_tempFont == null) { _tempFont = Gfx.FONT_MEDIUM; }
     }
 
     function onEnterSleep() {
         _sleeping = true;
+        WatchUi.requestUpdate();
     }
 
     function onExitSleep() {
         _sleeping = false;
+        WatchUi.requestUpdate();
     }
 
     function onUpdate(dc) {
+        if (dc has :setAntiAlias) {
+            dc.setAntiAlias(true);
+        }
+
         dc.setColor(StackTheme.BG, StackTheme.BG);
         dc.clear();
 
         var clock = Sys.getClockTime();
-        if (_sleeping) {
-            drawAlwaysOn(dc, clock.hour, clock.min);
+        var hour = clock.hour;
+        var minute = clock.min;
+        if (PIN_TIME >= 0) {
+            hour = PIN_TIME / 100;
+            minute = PIN_TIME % 100;
+        }
+        var hourText = twoDigits(displayHour(hour));
+        var minuteText = twoDigits(minute);
+
+        if (_sleeping || PIN_SLEEP) {
+            drawAlwaysOn(dc, hourText, minuteText);
         } else {
-            drawOffset(dc, clock.hour, clock.min);
+            drawOffset(dc, hourText, minuteText);
         }
     }
 
-    function drawOffset(dc, hour, minute) {
-        var displayHour = getDisplayHour(hour);
-        var hourText = twoDigits(displayHour);
-        var minuteText = twoDigits(minute);
+    // ======================================================================
+    // OFFSET
+    // ======================================================================
 
-        // Top utility row.
+    function drawOffset(dc, hourText, minuteText) {
         drawDateBadge(dc);
-        drawBattery(dc, 292, 78);
-
-        // Main poster typography. The leading zero is deliberate graphic structure.
-        dc.setColor(StackTheme.TEXT, StackTheme.BG);
-        dc.drawText(112, 56, _displayFont, hourText, Gfx.TEXT_JUSTIFY_CENTER);
-
-        dc.setColor(StackTheme.LIME, StackTheme.BG);
-        dc.drawText(292, 190, _displayFont, minuteText, Gfx.TEXT_JUSTIFY_CENTER);
-
-        // Colon bridges the two masses without joining either one.
-        dc.fillCircle(211, 166, 7);
-        dc.fillCircle(211, 194, 7);
-
-        // Purposeful lower-left utility stack.
-        drawWeather(dc, 50, 267);
-        drawSteps(dc, 55, 318);
-
-        // One non-functional accent piece is enough.
+        drawBattery(dc);
         drawPurpleBlock(dc);
+
+        var hourRight = drawHour(dc, hourText);
+        drawColon(dc, hourRight);
+        drawMinute(dc, minuteText);
+
+        drawRunner(dc);
+        drawWeather(dc);
+        drawCyanBlock(dc);
     }
 
-    function getDisplayHour(hour) {
+    //! Fit a display number inside an optical box and draw it.
+    //! The group is scaled to the box, centred horizontally and bottom aligned,
+    //! then its measured right edge is returned so neighbouring marks can be
+    //! placed against real geometry rather than a guessed text origin.
+    function drawDisplayGroup(dc, text, l, t, r, b, color) {
+        var unit = StackDigits.unitWidth(text);
+        var cap = b - t;
+        var byWidth = (r - l) / unit;
+        if (byWidth < cap) { cap = byWidth; }
+
+        var width = unit * cap;
+        var x = l + ((r - l) - width) / 2.0;
+        var y = b - cap;
+
+        dc.setColor(color, StackTheme.BG);
+        StackDigits.drawNumber(dc, text, x, y, cap);
+
+        return x + width;
+    }
+
+    function drawHour(dc, text) {
+        return drawDisplayGroup(dc, text, HOUR_L, HOUR_T, HOUR_R, HOUR_B,
+            StackTheme.TEXT);
+    }
+
+    function drawMinute(dc, text) {
+        return drawDisplayGroup(dc, text, MIN_L, MIN_T, MIN_R, MIN_B,
+            StackTheme.LIME);
+    }
+
+    //! The colon bridges the two number masses, so it hangs off the measured
+    //! right edge of the hour rather than off a fixed coordinate.
+    function drawColon(dc, hourRight) {
+        var x = (hourRight + COLON_GAP).toNumber();
+        dc.setColor(StackTheme.LIME, StackTheme.BG);
+        dc.fillCircle(x, COLON_TOP_Y, COLON_R);
+        dc.fillCircle(x, COLON_BOT_Y, COLON_R);
+    }
+
+    //! Small graphic label stuck onto the poster, not a UI pill.
+    function drawDateBadge(dc) {
+        var label = dateLabel();
+        var textW = dc.getTextWidthInPixels(label, _labelFont);
+        var badgeW = textW + 24;
+        var badgeH = 33;
+        var badgeX = CX - (badgeW / 2).toNumber();
+        var badgeY = 26;
+
+        dc.setColor(StackTheme.BLUE, StackTheme.BG);
+        dc.fillRoundedRectangle(badgeX, badgeY, badgeW, badgeH, 6);
+
+        dc.setColor(StackTheme.TEXT, StackTheme.BLUE);
+        dc.drawText(CX, badgeY + (badgeH / 2), _labelFont, label,
+            Gfx.TEXT_JUSTIFY_CENTER | Gfx.TEXT_JUSTIFY_VCENTER);
+    }
+
+    function drawBattery(dc) {
+        var pct = batteryPercent();
+        var x = 288;
+        var y = 76;
+        var w = 28;
+        var h = 15;
+
+        dc.setColor(StackTheme.LIME, StackTheme.BG);
+        dc.setPenWidth(3);
+        dc.drawRoundedRectangle(x, y, w, h, 4);
+        dc.setPenWidth(1);
+        dc.fillRectangle(x + w + 1, y + 4, 3, 7);
+
+        var fill = ((w - 8) * pct / 100).toNumber();
+        if (fill > 0) {
+            dc.fillRectangle(x + 4, y + 4, fill, 7);
+        }
+
+        dc.setColor(StackTheme.TEXT, StackTheme.BG);
+        dc.drawText(x + 38, y + 7, _valueFont, pct.toString() + "%",
+            Gfx.TEXT_JUSTIFY_LEFT | Gfx.TEXT_JUSTIFY_VCENTER);
+    }
+
+    //! Chunky STACK pictogram, not a Garmin line icon. Carries no value in v1.
+    function drawRunner(dc) {
+        dc.setColor(StackTheme.BLUE, StackTheme.BG);
+        dc.fillCircle(90, 220, 7);
+        dc.fillPolygon([[75, 231], [82, 246], [92, 242], [87, 227]]);
+        dc.fillPolygon([[83, 233], [97, 239], [99, 233], [86, 226]]);
+        dc.fillPolygon([[101, 238], [108, 228], [104, 224], [95, 234]]);
+        dc.fillPolygon([[80, 226], [67, 224], [66, 231], [78, 234]]);
+        dc.fillPolygon([[64, 225], [56, 235], [61, 239], [69, 229]]);
+        dc.fillPolygon([[83, 248], [98, 255], [102, 248], [88, 239]]);
+        dc.fillPolygon([[96, 249], [89, 263], [95, 266], [103, 253]]);
+        dc.fillPolygon([[91, 268], [101, 270], [102, 265], [93, 262]]);
+        dc.fillPolygon([[79, 240], [68, 250], [72, 257], [85, 248]]);
+        dc.fillPolygon([[67, 251], [59, 264], [64, 268], [73, 256]]);
+        dc.fillPolygon([[60, 264], [53, 268], [56, 272], [63, 269]]);
+    }
+
+    function drawWeather(dc) {
+        dc.setColor(StackTheme.YELLOW, StackTheme.BG);
+        dc.fillCircle(76, 298, 20);
+
+        dc.setColor(StackTheme.TEXT, StackTheme.BG);
+        dc.drawText(110, 298, _tempFont, temperatureLabel(),
+            Gfx.TEXT_JUSTIFY_LEFT | Gfx.TEXT_JUSTIFY_VCENTER);
+    }
+
+    //! Decoration only. Balances the lime minute mass across the lower half.
+    function drawCyanBlock(dc) {
+        dc.setColor(StackTheme.CYAN, StackTheme.BG);
+        dc.fillRectangle(98, 324, 54, 26);
+        dc.fillRectangle(98, 346, 82, 26);
+    }
+
+    //! Decoration only. Fills the upper-right negative space.
+    function drawPurpleBlock(dc) {
+        dc.setColor(StackTheme.PURPLE, StackTheme.BG);
+        dc.fillRectangle(320, 120, 34, 32);
+        dc.fillRectangle(344, 148, 40, 34);
+    }
+
+    // ======================================================================
+    // ALWAYS ON
+    // ======================================================================
+
+    function drawAlwaysOn(dc, hourText, minuteText) {
+        var l = CX - 64.0;
+        var r = CX + 64.0;
+
+        drawDisplayGroup(dc, hourText, l, AOD_HOUR_B - AOD_CAP, r, AOD_HOUR_B,
+            StackTheme.AOD);
+        drawDisplayGroup(dc, minuteText, l, AOD_MIN_B - AOD_CAP, r, AOD_MIN_B,
+            StackTheme.AOD);
+
+        dc.setColor(StackTheme.AOD, StackTheme.BG);
+        dc.fillCircle(CX, 182, 5);
+        dc.fillCircle(CX, 200, 5);
+        dc.drawText(CX, 340, _labelFont, dateLabel(),
+            Gfx.TEXT_JUSTIFY_CENTER | Gfx.TEXT_JUSTIFY_VCENTER);
+
+        dc.setColor(StackTheme.LIME, StackTheme.BG);
+        dc.fillRectangle(194, 358, 28, 4);
+    }
+
+    // ======================================================================
+    // data
+    // ======================================================================
+
+    function displayHour(hour) {
         var settings = Sys.getDeviceSettings();
         if (settings != null && !settings.is24Hour) {
             var twelve = hour % 12;
@@ -93,22 +280,12 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         return value.toString();
     }
 
-    function drawDateBadge(dc) {
-        var label = "TODAY";
+    function dateLabel() {
         var info = Gregorian.info(Time.now(), Time.FORMAT_SHORT);
-        if (info != null) {
-            label = weekdayLabel(info.day_of_week) + " " + info.day.toString();
+        if (info == null || info.day == null) {
+            return "STACK";
         }
-
-        var textW = dc.getTextWidthInPixels(label, _utilityFont);
-        var badgeW = textW + 24;
-        var badgeH = 32;
-        var badgeX = 208 - (badgeW / 2).toNumber();
-
-        dc.setColor(StackTheme.BLUE, StackTheme.BG);
-        dc.fillRoundedRectangle(badgeX, 26, badgeW, badgeH, 7);
-        dc.setColor(StackTheme.TEXT, StackTheme.BLUE);
-        dc.drawText(208, 28, _utilityFont, label, Gfx.TEXT_JUSTIFY_CENTER);
+        return weekdayLabel(info.day_of_week) + " " + info.day.toString();
     }
 
     function weekdayLabel(day) {
@@ -122,102 +299,28 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         return "DAY";
     }
 
-    function drawBattery(dc, x, y) {
-        var battery = 0;
+    function batteryPercent() {
         var stats = Sys.getSystemStats();
-        if (stats != null && stats.battery != null) {
-            battery = stats.battery.toNumber();
+        if (stats == null || stats.battery == null) {
+            return 0;
         }
-
-        dc.setColor(StackTheme.LIME, StackTheme.BG);
-        dc.drawRoundedRectangle(x, y + 4, 24, 11, 3);
-        dc.fillRectangle(x + 24, y + 7, 3, 5);
-
-        var fill = ((battery * 16) / 100).toNumber();
-        if (fill > 0) {
-            dc.fillRoundedRectangle(x + 4, y + 8, fill, 3, 1);
-        }
-
-        dc.setColor(StackTheme.TEXT, StackTheme.BG);
-        dc.drawText(x + 34, y, _utilitySmallFont,
-            battery.toString() + "%", Gfx.TEXT_JUSTIFY_LEFT);
+        return stats.battery.toNumber();
     }
 
-    function drawWeather(dc, x, y) {
-        var label = "--°";
+    //! Built by concatenation on purpose: format() has produced
+    //! "Unexpected input to format" crashes here with odd inputs.
+    function temperatureLabel() {
         var current = Weather.getCurrentConditions();
-
-        if (current != null && current.temperature != null) {
-            var temp = current.temperature;
-            var settings = Sys.getDeviceSettings();
-
-            if (settings != null && settings.temperatureUnits == Sys.UNIT_STATUTE) {
-                temp = (temp * 9.0 / 5.0) + 32.0;
-            }
-
-            label = temp.toNumber().toString() + "°";
+        if (current == null || current.temperature == null) {
+            return "--°";
         }
 
-        drawSun(dc, x + 12, y + 13);
-
-        dc.setColor(StackTheme.TEXT, StackTheme.BG);
-        dc.drawText(x + 36, y, _utilityFont, label, Gfx.TEXT_JUSTIFY_LEFT);
-    }
-
-    function drawSun(dc, cx, cy) {
-        dc.setColor(StackTheme.YELLOW, StackTheme.BG);
-        dc.fillCircle(cx, cy, 8);
-
-        dc.fillRectangle(cx - 2, cy - 16, 4, 5);
-        dc.fillRectangle(cx - 2, cy + 11, 4, 5);
-        dc.fillRectangle(cx - 16, cy - 2, 5, 4);
-        dc.fillRectangle(cx + 11, cy - 2, 5, 4);
-    }
-
-    function drawSteps(dc, x, y) {
-        var steps = 0;
-        var activity = ActivityMonitor.getInfo();
-        if (activity != null && activity.steps != null) {
-            steps = activity.steps;
+        var temp = current.temperature;
+        var settings = Sys.getDeviceSettings();
+        if (settings != null && settings.temperatureUnits == Sys.UNIT_STATUTE) {
+            temp = (temp * 9.0 / 5.0) + 32.0;
         }
 
-        var label;
-        if (steps >= 1000) {
-            var thousands = (steps / 1000).toNumber();
-            var hundreds = ((steps % 1000) / 100).toNumber();
-            label = thousands.toString() + "." + hundreds.toString() + "K";
-        } else {
-            label = steps.toString();
-        }
-
-        // Chunky cyan shoe/run mark rather than a miniature stick figure.
-        dc.setColor(StackTheme.CYAN, StackTheme.BG);
-        dc.fillRoundedRectangle(x, y + 10, 29, 10, 4);
-        dc.fillRoundedRectangle(x + 7, y + 4, 13, 11, 3);
-        dc.fillRoundedRectangle(x + 22, y + 14, 12, 6, 3);
-
-        dc.setColor(StackTheme.TEXT, StackTheme.BG);
-        dc.drawText(x + 43, y, _utilityFont, label, Gfx.TEXT_JUSTIFY_LEFT);
-    }
-
-    function drawPurpleBlock(dc) {
-        dc.setColor(StackTheme.PURPLE, StackTheme.BG);
-        dc.fillRoundedRectangle(336, 133, 25, 29, 4);
-        dc.fillRoundedRectangle(351, 149, 25, 29, 4);
-    }
-
-    function drawAlwaysOn(dc, hour, minute) {
-        var displayHour = getDisplayHour(hour);
-        var hourText = twoDigits(displayHour);
-        var minuteText = twoDigits(minute);
-
-        dc.setColor(StackTheme.AOD, StackTheme.BG);
-        dc.drawText(208, 96, _aodFont, hourText, Gfx.TEXT_JUSTIFY_CENTER);
-        dc.drawText(208, 218, _aodFont, minuteText, Gfx.TEXT_JUSTIFY_CENTER);
-        dc.fillCircle(208, 191, 3);
-        dc.fillCircle(208, 204, 3);
-
-        dc.setColor(StackTheme.LIME, StackTheme.BG);
-        dc.fillRoundedRectangle(195, 355, 26, 3, 1);
+        return temp.toNumber().toString() + "°";
     }
 }
