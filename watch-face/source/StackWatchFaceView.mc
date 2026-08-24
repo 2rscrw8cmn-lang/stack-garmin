@@ -1,6 +1,5 @@
 using Toybox.ActivityMonitor as ActivityMonitor;
 using Toybox.Graphics as Gfx;
-using Toybox.Lang as Lang;
 using Toybox.System as Sys;
 using Toybox.Time as Time;
 using Toybox.Time.Gregorian as Gregorian;
@@ -41,24 +40,24 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         var m1 = (minute / 10).toNumber();
         var m2 = minute % 10;
 
-        // Top information row: date badge left/center, battery to the right.
+        // Compact top row. Keep both objects comfortably inside the circular safe area.
         drawDateBadge(dc);
-        drawBattery(dc, 300, 58);
+        drawBattery(dc, 276, 48);
 
-        // The time is the poster. Two independent number groups own most of the face.
-        // White hour sits high and left; lime minutes sit low and right.
-        drawDisplayDigit(dc, h1, 30, 82, 82, 142, 25, StackTheme.TEXT);
-        drawDisplayDigit(dc, h2, 115, 82, 82, 142, 25, StackTheme.TEXT);
+        // The time is the poster. Push the two groups away from center so the
+        // composition feels intentionally offset instead of arranged on a grid.
+        drawDisplayDigit(dc, h1, 12, 76, 92, 154, 31, StackTheme.TEXT);
+        drawDisplayDigit(dc, h2, 108, 76, 92, 154, 31, StackTheme.TEXT);
 
-        drawDisplayDigit(dc, m1, 205, 220, 82, 142, 25, StackTheme.LIME);
-        drawDisplayDigit(dc, m2, 290, 220, 82, 142, 25, StackTheme.LIME);
+        drawDisplayDigit(dc, m1, 202, 214, 88, 154, 31, StackTheme.LIME);
+        drawDisplayDigit(dc, m2, 298, 214, 88, 154, 31, StackTheme.LIME);
 
-        // Colon behaves like a graphic object, not tiny punctuation.
+        // Graphic punctuation lives between the masses rather than attaching to either one.
         dc.setColor(StackTheme.LIME, StackTheme.BG);
-        dc.fillCircle(205, 165, 9);
-        dc.fillCircle(205, 196, 9);
+        dc.fillCircle(216, 169, 10);
+        dc.fillCircle(216, 203, 10);
 
-        drawSteps(dc, 42, 255);
+        drawSteps(dc, 38, 260);
         drawDecorativeBlocks(dc);
     }
 
@@ -75,16 +74,18 @@ class StackWatchFaceView extends WatchUi.WatchFace {
     }
 
     function drawDateBadge(dc) {
+        // FORMAT_SHORT guarantees a numeric day_of_week (1=Sun ... 7=Sat),
+        // which keeps the badge deterministic across device language settings.
         var label = "TODAY";
-        var info = Gregorian.info(Time.now(), Time.FORMAT_MEDIUM);
+        var info = Gregorian.info(Time.now(), Time.FORMAT_SHORT);
         if (info != null) {
-            label = Lang.format("$1$ $2$", [weekdayLabel(info.day_of_week), info.day]);
+            label = weekdayLabel(info.day_of_week) + " " + info.day.toString();
         }
 
         dc.setColor(StackTheme.BLUE, StackTheme.BG);
-        dc.fillRoundedRectangle(130, 30, 126, 42, 10);
+        dc.fillRoundedRectangle(118, 26, 128, 42, 9);
         dc.setColor(StackTheme.TEXT, StackTheme.BLUE);
-        dc.drawText(193, 39, Gfx.FONT_XTINY, label, Gfx.TEXT_JUSTIFY_CENTER);
+        dc.drawText(182, 35, Gfx.FONT_XTINY, label, Gfx.TEXT_JUSTIFY_CENTER);
     }
 
     function weekdayLabel(day) {
@@ -106,18 +107,17 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         }
 
         dc.setColor(StackTheme.LIME, StackTheme.BG);
-        dc.drawRoundedRectangle(x, y, 30, 14, 3);
-        dc.fillRectangle(x + 30, y + 4, 4, 6);
+        dc.drawRoundedRectangle(x, y, 28, 13, 3);
+        dc.fillRectangle(x + 28, y + 4, 4, 5);
 
-        var fill = ((battery * 22) / 100).toNumber();
+        var fill = ((battery * 20) / 100).toNumber();
         if (fill > 0) {
-            dc.fillRoundedRectangle(x + 4, y + 4, fill, 6, 1);
+            dc.fillRoundedRectangle(x + 4, y + 4, fill, 5, 1);
         }
 
-        // Avoid Number.format("%d%%"): Connect IQ rejects that format string at runtime.
         var batteryLabel = battery.toString() + "%";
         dc.setColor(StackTheme.TEXT, StackTheme.BG);
-        dc.drawText(x + 42, y - 6, Gfx.FONT_XTINY,
+        dc.drawText(x + 39, y - 7, Gfx.FONT_XTINY,
             batteryLabel, Gfx.TEXT_JUSTIFY_LEFT);
     }
 
@@ -128,40 +128,39 @@ class StackWatchFaceView extends WatchUi.WatchFace {
             steps = activity.steps;
         }
 
-        var thousands = (steps / 1000).toNumber();
-        var hundreds = ((steps % 1000) / 100).toNumber();
         var label;
         if (steps >= 1000) {
-            label = Lang.format("$1$.$2$K", [thousands, hundreds]);
+            var thousands = (steps / 1000).toNumber();
+            var hundreds = ((steps % 1000) / 100).toNumber();
+            label = thousands.toString() + "." + hundreds.toString() + "K";
         } else {
             label = steps.toString();
         }
 
-        // Small electric-blue runner glyph built from primitives.
+        // Compact runner + value unit. Keep the blue mark and white number on one line.
         dc.setColor(StackTheme.BLUE, StackTheme.BG);
-        dc.fillCircle(x + 12, y + 6, 5);
-        dc.fillRoundedRectangle(x + 9, y + 13, 7, 20, 3);
-        dc.fillRoundedRectangle(x + 14, y + 17, 18, 6, 3);
-        dc.fillRoundedRectangle(x + 3, y + 29, 17, 6, 3);
-        dc.fillRoundedRectangle(x + 20, y + 29, 17, 6, 3);
-
-        dc.setColor(StackTheme.YELLOW, StackTheme.BG);
-        dc.fillCircle(x + 4, y + 58, 12);
+        dc.fillCircle(x + 10, y + 7, 5);
+        dc.fillRoundedRectangle(x + 7, y + 14, 7, 18, 2);
+        dc.fillRoundedRectangle(x + 12, y + 17, 18, 6, 2);
+        dc.fillRoundedRectangle(x + 1, y + 28, 16, 6, 2);
+        dc.fillRoundedRectangle(x + 18, y + 28, 17, 6, 2);
 
         dc.setColor(StackTheme.TEXT, StackTheme.BG);
-        dc.drawText(x + 25, y + 47, Gfx.FONT_XTINY, label, Gfx.TEXT_JUSTIFY_LEFT);
+        dc.drawText(x + 43, y + 8, Gfx.FONT_SMALL, label, Gfx.TEXT_JUSTIFY_LEFT);
+
+        // Yellow punctuation sits below the unit, echoing the approved mockup.
+        dc.setColor(StackTheme.YELLOW, StackTheme.BG);
+        dc.fillCircle(x + 9, y + 60, 11);
     }
 
     function drawDecorativeBlocks(dc) {
-        // Purple offset piece at right — intentionally decorative, like the mockup.
         dc.setColor(StackTheme.PURPLE, StackTheme.BG);
-        dc.fillRoundedRectangle(333, 132, 30, 34, 5);
-        dc.fillRoundedRectangle(351, 151, 30, 34, 5);
+        dc.fillRoundedRectangle(330, 127, 30, 35, 4);
+        dc.fillRoundedRectangle(349, 146, 30, 35, 4);
 
-        // Cyan stepped punctuation at the bottom-left.
         dc.setColor(StackTheme.CYAN, StackTheme.BG);
-        dc.fillRoundedRectangle(112, 353, 86, 22, 5);
-        dc.fillRoundedRectangle(166, 335, 32, 40, 5);
+        dc.fillRoundedRectangle(104, 349, 92, 23, 4);
+        dc.fillRoundedRectangle(166, 331, 30, 41, 4);
     }
 
     function drawAlwaysOn(dc, hour, minute) {
@@ -171,15 +170,14 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         var m1 = (minute / 10).toNumber();
         var m2 = minute % 10;
 
-        // AOD is intentionally its own composition: sparse, centered and quiet.
-        drawDisplayDigit(dc, h1, 105, 100, 52, 88, 12, StackTheme.AOD);
-        drawDisplayDigit(dc, h2, 161, 100, 52, 88, 12, StackTheme.AOD);
-        drawDisplayDigit(dc, m1, 205, 220, 52, 88, 12, StackTheme.AOD);
-        drawDisplayDigit(dc, m2, 261, 220, 52, 88, 12, StackTheme.AOD);
+        drawDisplayDigit(dc, h1, 104, 102, 52, 88, 13, StackTheme.AOD);
+        drawDisplayDigit(dc, h2, 162, 102, 52, 88, 13, StackTheme.AOD);
+        drawDisplayDigit(dc, m1, 204, 220, 52, 88, 13, StackTheme.AOD);
+        drawDisplayDigit(dc, m2, 262, 220, 52, 88, 13, StackTheme.AOD);
 
         dc.setColor(StackTheme.AOD, StackTheme.BG);
-        dc.fillCircle(207, 194, 3);
-        dc.fillCircle(207, 208, 3);
+        dc.fillCircle(208, 194, 3);
+        dc.fillCircle(208, 208, 3);
 
         dc.setColor(StackTheme.LIME, StackTheme.BG);
         dc.fillRoundedRectangle(195, 358, 26, 3, 1);
@@ -188,62 +186,31 @@ class StackWatchFaceView extends WatchUi.WatchFace {
     function drawDisplayDigit(dc, digit, x, y, w, h, t, color) {
         dc.setColor(color, StackTheme.BG);
 
-        // Digits are drawn as solid poster glyphs with overlapping strokes.
-        // There are no seven-segment gaps; joints intentionally fuse together.
-        if (digit == 0) {
-            drawZero(dc, x, y, w, h, t, color);
-            return;
-        }
-        if (digit == 1) {
-            drawOne(dc, x, y, w, h, t, color);
-            return;
-        }
-        if (digit == 2) {
-            drawTwo(dc, x, y, w, h, t, color);
-            return;
-        }
-        if (digit == 3) {
-            drawThree(dc, x, y, w, h, t, color);
-            return;
-        }
-        if (digit == 4) {
-            drawFour(dc, x, y, w, h, t, color);
-            return;
-        }
-        if (digit == 5) {
-            drawFive(dc, x, y, w, h, t, color);
-            return;
-        }
-        if (digit == 6) {
-            drawSix(dc, x, y, w, h, t, color);
-            return;
-        }
-        if (digit == 7) {
-            drawSeven(dc, x, y, w, h, t, color);
-            return;
-        }
-        if (digit == 8) {
-            drawEight(dc, x, y, w, h, t, color);
-            return;
-        }
-        if (digit == 9) {
-            drawNine(dc, x, y, w, h, t, color);
-        }
+        if (digit == 0) { drawZero(dc, x, y, w, h, t, color); return; }
+        if (digit == 1) { drawOne(dc, x, y, w, h, t, color); return; }
+        if (digit == 2) { drawTwo(dc, x, y, w, h, t, color); return; }
+        if (digit == 3) { drawThree(dc, x, y, w, h, t, color); return; }
+        if (digit == 4) { drawFour(dc, x, y, w, h, t, color); return; }
+        if (digit == 5) { drawFive(dc, x, y, w, h, t, color); return; }
+        if (digit == 6) { drawSix(dc, x, y, w, h, t, color); return; }
+        if (digit == 7) { drawSeven(dc, x, y, w, h, t, color); return; }
+        if (digit == 8) { drawEight(dc, x, y, w, h, t, color); return; }
+        if (digit == 9) { drawNine(dc, x, y, w, h, t, color); }
     }
 
     function drawZero(dc, x, y, w, h, t, color) {
         dc.setColor(color, StackTheme.BG);
-        dc.fillRoundedRectangle(x, y, w, h, 11);
+        dc.fillRoundedRectangle(x, y, w, h, 6);
         dc.setColor(StackTheme.BG, StackTheme.BG);
-        dc.fillRoundedRectangle(x + t, y + t, w - (t * 2), h - (t * 2), 5);
+        dc.fillRoundedRectangle(x + t, y + t, w - (t * 2), h - (t * 2), 2);
     }
 
     function drawOne(dc, x, y, w, h, t, color) {
         dc.setColor(color, StackTheme.BG);
         var stemX = x + ((w - t) / 2).toNumber();
-        dc.fillRoundedRectangle(stemX, y, t, h, 6);
-        dc.fillRoundedRectangle(stemX - 18, y + 8, 30, t, 5);
-        dc.fillRoundedRectangle(stemX - 15, y + h - t, t + 38, t, 5);
+        dc.fillRoundedRectangle(stemX, y, t, h, 3);
+        dc.fillRoundedRectangle(stemX - 21, y + 7, 35, t, 3);
+        dc.fillRoundedRectangle(stemX - 18, y + h - t, t + 43, t, 3);
     }
 
     function drawTwo(dc, x, y, w, h, t, color) {
@@ -261,14 +228,14 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         var half = (h / 2).toNumber();
         barV(dc, x + w - t, y, t, h);
         barH(dc, x, y, w, t);
-        barH(dc, x + 8, y + half - (t / 2).toNumber(), w - 8, t);
+        barH(dc, x + 5, y + half - (t / 2).toNumber(), w - 5, t);
         barH(dc, x, y + h - t, w, t);
     }
 
     function drawFour(dc, x, y, w, h, t, color) {
         dc.setColor(color, StackTheme.BG);
         var half = (h / 2).toNumber();
-        barV(dc, x, y, t, half + 2);
+        barV(dc, x, y, t, half + 3);
         barV(dc, x + w - t, y, t, h);
         barH(dc, x, y + half - (t / 2).toNumber(), w, t);
     }
@@ -277,7 +244,7 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         dc.setColor(color, StackTheme.BG);
         var half = (h / 2).toNumber();
         barH(dc, x, y, w, t);
-        barV(dc, x, y, t, half + 3);
+        barV(dc, x, y, t, half + 4);
         barH(dc, x, y + half - (t / 2).toNumber(), w, t);
         barV(dc, x + w - t, y + half - 1, t, half + 1);
         barH(dc, x, y + h - t, w, t);
@@ -301,29 +268,29 @@ class StackWatchFaceView extends WatchUi.WatchFace {
 
     function drawEight(dc, x, y, w, h, t, color) {
         dc.setColor(color, StackTheme.BG);
-        dc.fillRoundedRectangle(x, y, w, h, 11);
+        dc.fillRoundedRectangle(x, y, w, h, 6);
         dc.setColor(StackTheme.BG, StackTheme.BG);
         var innerW = w - (t * 2);
         var innerH = ((h - (t * 3)) / 2).toNumber();
-        dc.fillRoundedRectangle(x + t, y + t, innerW, innerH, 4);
-        dc.fillRoundedRectangle(x + t, y + (t * 2) + innerH, innerW, innerH, 4);
+        dc.fillRoundedRectangle(x + t, y + t, innerW, innerH, 2);
+        dc.fillRoundedRectangle(x + t, y + (t * 2) + innerH, innerW, innerH, 2);
     }
 
     function drawNine(dc, x, y, w, h, t, color) {
         dc.setColor(color, StackTheme.BG);
         var half = (h / 2).toNumber();
         barH(dc, x, y, w, t);
-        barV(dc, x, y, t, half + 2);
+        barV(dc, x, y, t, half + 3);
         barV(dc, x + w - t, y, t, h);
         barH(dc, x, y + half - (t / 2).toNumber(), w, t);
         barH(dc, x, y + h - t, w, t);
     }
 
     function barH(dc, x, y, w, h) {
-        dc.fillRoundedRectangle(x, y, w, h, 5);
+        dc.fillRoundedRectangle(x, y, w, h, 3);
     }
 
     function barV(dc, x, y, w, h) {
-        dc.fillRoundedRectangle(x, y, w, h, 5);
+        dc.fillRoundedRectangle(x, y, w, h, 3);
     }
 }
