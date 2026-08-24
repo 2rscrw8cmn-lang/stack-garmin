@@ -32,29 +32,42 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         }
     }
 
-    function drawOffset(dc) {
-        var clock = Sys.getClockTime();
-        var settings = Sys.getDeviceSettings();
+    function getDisplayHour(clock) {
         var hour = clock.hour;
+        var settings = Sys.getDeviceSettings();
 
-        if (!settings.is24Hour) {
+        if (settings != null && !settings.is24Hour) {
             hour = hour % 12;
             if (hour == 0) {
                 hour = 12;
             }
         }
 
+        return hour;
+    }
+
+    function getDateLabel() {
+        var date = Gregorian.info(Time.now(), Time.FORMAT_MEDIUM);
+        if (date == null) {
+            return "";
+        }
+        return Lang.format("$1$ $2$", [date.day_of_week, date.day]);
+    }
+
+    function drawOffset(dc) {
+        var clock = Sys.getClockTime();
+        var hour = getDisplayHour(clock);
         var hh = hour.format("%02d");
         var mm = clock.min.format("%02d");
-        var date = Gregorian.info(Time.now(), Time.FORMAT_MEDIUM);
+        var dateLabel = getDateLabel();
 
         // Day/date pill: bright, compact, and intentionally separate from the time.
         dc.setColor(StackTheme.BLUE, StackTheme.BG);
         dc.fillRoundedRectangle(142, 34, 132, 42, 11);
-        dc.setColor(StackTheme.TEXT, StackTheme.BLUE);
-        dc.drawText(208, 43, Gfx.FONT_XTINY,
-            Lang.format("$1$ $2$", [date.day_of_week, date.day]),
-            Gfx.TEXT_JUSTIFY_CENTER);
+        if (dateLabel.length() > 0) {
+            dc.setColor(StackTheme.TEXT, StackTheme.BLUE);
+            dc.drawText(208, 43, Gfx.FONT_XTINY, dateLabel, Gfx.TEXT_JUSTIFY_CENTER);
+        }
 
         // Time is the graphic. Split and offset instead of centered like a stock Garmin face.
         drawNumber(dc, hh, 44, 88, 15, 3, StackTheme.TEXT, false);
@@ -72,19 +85,10 @@ class StackWatchFaceView extends WatchUi.WatchFace {
 
     function drawAlwaysOn(dc) {
         var clock = Sys.getClockTime();
-        var settings = Sys.getDeviceSettings();
-        var hour = clock.hour;
-
-        if (!settings.is24Hour) {
-            hour = hour % 12;
-            if (hour == 0) {
-                hour = 12;
-            }
-        }
-
+        var hour = getDisplayHour(clock);
         var hh = hour.format("%02d");
         var mm = clock.min.format("%02d");
-        var date = Gregorian.info(Time.now(), Time.FORMAT_MEDIUM);
+        var dateLabel = getDateLabel();
 
         // Sparse outlined pixels keep the AOD recognizably STACK while reducing lit area.
         drawNumber(dc, hh, 111, 108, 10, 3, StackTheme.AOD, true);
@@ -94,18 +98,29 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         dc.drawCircle(207, 202, 3);
         dc.drawCircle(207, 214, 3);
 
-        dc.setColor(StackTheme.TEXT, StackTheme.BG);
-        dc.drawText(208, 330, Gfx.FONT_XTINY,
-            Lang.format("$1$ $2$", [date.day_of_week, date.day]),
-            Gfx.TEXT_JUSTIFY_CENTER);
+        if (dateLabel.length() > 0) {
+            dc.setColor(StackTheme.TEXT, StackTheme.BG);
+            dc.drawText(208, 330, Gfx.FONT_XTINY, dateLabel, Gfx.TEXT_JUSTIFY_CENTER);
+        }
 
         dc.setColor(StackTheme.LIME, StackTheme.BG);
         dc.fillRoundedRectangle(195, 362, 26, 3, 1);
     }
 
     function drawBattery(dc, x, y) {
-        var battery = Sys.getSystemStats().battery;
+        var stats = Sys.getSystemStats();
+        var battery = 0;
+
+        if (stats != null) {
+            battery = stats.battery;
+        }
+
         var fill = ((battery * 30) / 100).toNumber();
+        if (fill < 0) {
+            fill = 0;
+        } else if (fill > 30) {
+            fill = 30;
+        }
 
         dc.setColor(StackTheme.LIME, StackTheme.BG);
         dc.drawRoundedRectangle(x, y, 38, 18, 4);
@@ -120,9 +135,16 @@ class StackWatchFaceView extends WatchUi.WatchFace {
     }
 
     function drawSteps(dc, x, y) {
-        var steps = ActivityMonitor.getInfo().steps;
-        var label;
+        var steps = 0;
+        var activity = ActivityMonitor.getInfo();
 
+        // Activity Monitor values are allowed to be null, especially in the simulator
+        // before simulated activity data has been configured. Treat missing as zero.
+        if (activity != null && activity.steps != null) {
+            steps = activity.steps;
+        }
+
+        var label;
         if (steps >= 1000) {
             label = Lang.format("$1$K", [(steps / 1000.0).format("%.1f")]);
         } else {
@@ -161,7 +183,9 @@ class StackWatchFaceView extends WatchUi.WatchFace {
 
         for (var i = 0; i < chars.size(); i += 1) {
             var digit = chars[i].toNumber() - 48;
-            drawDigit(dc, digit, x + (i * (digitWidth + spacing)), y, cell, gap, color, outline);
+            if (digit >= 0 && digit <= 9) {
+                drawDigit(dc, digit, x + (i * (digitWidth + spacing)), y, cell, gap, color, outline);
+            }
         }
     }
 
