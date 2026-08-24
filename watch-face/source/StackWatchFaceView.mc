@@ -1,5 +1,9 @@
+using Toybox.ActivityMonitor as ActivityMonitor;
 using Toybox.Graphics as Gfx;
+using Toybox.Lang as Lang;
 using Toybox.System as Sys;
+using Toybox.Time as Time;
+using Toybox.Time.Gregorian as Gregorian;
 using Toybox.WatchUi as WatchUi;
 
 class StackWatchFaceView extends WatchUi.WatchFace {
@@ -34,123 +38,293 @@ class StackWatchFaceView extends WatchUi.WatchFace {
     }
 
     function drawOffset(dc, hour, minute) {
-        var h1 = (hour / 10).toNumber();
-        var h2 = hour % 10;
+        var displayHour = getDisplayHour(hour);
+        var h1 = (displayHour / 10).toNumber();
+        var h2 = displayHour % 10;
         var m1 = (minute / 10).toNumber();
         var m2 = minute % 10;
 
-        // Quiet identity. The time remains the graphic, not a STACK logo card.
+        // Top information row: date badge left/center, battery to the right.
+        drawDateBadge(dc);
+        drawBattery(dc, 300, 58);
+
+        // The time is the poster. Two independent number groups own most of the face.
+        // White hour sits high and left; lime minutes sit low and right.
+        drawDisplayDigit(dc, h1, 30, 82, 82, 142, 25, StackTheme.TEXT);
+        drawDisplayDigit(dc, h2, 115, 82, 82, 142, 25, StackTheme.TEXT);
+
+        drawDisplayDigit(dc, m1, 205, 220, 82, 142, 25, StackTheme.LIME);
+        drawDisplayDigit(dc, m2, 290, 220, 82, 142, 25, StackTheme.LIME);
+
+        // Colon behaves like a graphic object, not tiny punctuation.
         dc.setColor(StackTheme.LIME, StackTheme.BG);
-        dc.drawText(208, 35, Gfx.FONT_XTINY, "STACK", Gfx.TEXT_JUSTIFY_CENTER);
+        dc.fillCircle(205, 165, 9);
+        dc.fillCircle(205, 196, 9);
 
-        // Solid modular numerals: large, chunky and intentionally offset.
-        drawSegmentDigit(dc, h1, 34, 78, 70, 132, 20, StackTheme.TEXT, false);
-        drawSegmentDigit(dc, h2, 116, 78, 70, 132, 20, StackTheme.TEXT, false);
-
-        drawSegmentDigit(dc, m1, 204, 218, 70, 132, 20, StackTheme.LIME, false);
-        drawSegmentDigit(dc, m2, 286, 218, 70, 132, 20, StackTheme.LIME, false);
-
-        // Colon is oversized punctuation between the two number groups.
-        dc.setColor(StackTheme.LIME, StackTheme.BG);
-        dc.fillCircle(201, 177, 8);
-        dc.fillCircle(201, 207, 8);
-
+        drawSteps(dc, 42, 255);
         drawDecorativeBlocks(dc);
     }
 
-    function drawAlwaysOn(dc, hour, minute) {
-        var h1 = (hour / 10).toNumber();
-        var h2 = hour % 10;
-        var m1 = (minute / 10).toNumber();
-        var m2 = minute % 10;
+    function getDisplayHour(hour) {
+        var settings = Sys.getDeviceSettings();
+        if (settings != null && !settings.is24Hour) {
+            var twelve = hour % 12;
+            if (twelve == 0) {
+                twelve = 12;
+            }
+            return twelve;
+        }
+        return hour;
+    }
 
-        // Sparse outline treatment for AMOLED low-power mode.
-        drawSegmentDigit(dc, h1, 92, 92, 48, 92, 12, StackTheme.AOD, true);
-        drawSegmentDigit(dc, h2, 148, 92, 48, 92, 12, StackTheme.AOD, true);
-        drawSegmentDigit(dc, m1, 220, 216, 48, 92, 12, StackTheme.AOD, true);
-        drawSegmentDigit(dc, m2, 276, 216, 48, 92, 12, StackTheme.AOD, true);
+    function drawDateBadge(dc) {
+        var label = "TODAY";
+        var info = Gregorian.info(Time.now(), Time.FORMAT_MEDIUM);
+        if (info != null) {
+            label = Lang.format("$1$ $2$", [weekdayLabel(info.day_of_week), info.day]);
+        }
 
-        dc.setColor(StackTheme.AOD, StackTheme.BG);
-        dc.drawCircle(208, 191, 3);
-        dc.drawCircle(208, 205, 3);
+        dc.setColor(StackTheme.BLUE, StackTheme.BG);
+        dc.fillRoundedRectangle(130, 30, 126, 42, 10);
+        dc.setColor(StackTheme.TEXT, StackTheme.BLUE);
+        dc.drawText(193, 39, Gfx.FONT_XTINY, label, Gfx.TEXT_JUSTIFY_CENTER);
+    }
+
+    function weekdayLabel(day) {
+        if (day == 1) { return "SUN"; }
+        if (day == 2) { return "MON"; }
+        if (day == 3) { return "TUE"; }
+        if (day == 4) { return "WED"; }
+        if (day == 5) { return "THU"; }
+        if (day == 6) { return "FRI"; }
+        if (day == 7) { return "SAT"; }
+        return "DAY";
+    }
+
+    function drawBattery(dc, x, y) {
+        var battery = 0;
+        var stats = Sys.getSystemStats();
+        if (stats != null && stats.battery != null) {
+            battery = stats.battery.toNumber();
+        }
 
         dc.setColor(StackTheme.LIME, StackTheme.BG);
-        dc.fillRoundedRectangle(194, 359, 28, 3, 1);
+        dc.drawRoundedRectangle(x, y, 30, 14, 3);
+        dc.fillRectangle(x + 30, y + 4, 4, 6);
+
+        var fill = ((battery * 22) / 100).toNumber();
+        if (fill > 0) {
+            dc.fillRoundedRectangle(x + 4, y + 4, fill, 6, 1);
+        }
+
+        dc.setColor(StackTheme.TEXT, StackTheme.BG);
+        dc.drawText(x + 42, y - 6, Gfx.FONT_XTINY,
+            battery.format("%d%%"), Gfx.TEXT_JUSTIFY_LEFT);
+    }
+
+    function drawSteps(dc, x, y) {
+        var steps = 0;
+        var activity = ActivityMonitor.getInfo();
+        if (activity != null && activity.steps != null) {
+            steps = activity.steps;
+        }
+
+        var thousands = (steps / 1000).toNumber();
+        var hundreds = ((steps % 1000) / 100).toNumber();
+        var label;
+        if (steps >= 1000) {
+            label = Lang.format("$1$.$2$K", [thousands, hundreds]);
+        } else {
+            label = steps.format("%d");
+        }
+
+        // Small electric-blue runner glyph built from primitives.
+        dc.setColor(StackTheme.BLUE, StackTheme.BG);
+        dc.fillCircle(x + 12, y + 6, 5);
+        dc.fillRoundedRectangle(x + 9, y + 13, 7, 20, 3);
+        dc.fillRoundedRectangle(x + 14, y + 17, 18, 6, 3);
+        dc.fillRoundedRectangle(x + 3, y + 29, 17, 6, 3);
+        dc.fillRoundedRectangle(x + 20, y + 29, 17, 6, 3);
+
+        dc.setColor(StackTheme.YELLOW, StackTheme.BG);
+        dc.fillCircle(x + 4, y + 58, 12);
+
+        dc.setColor(StackTheme.TEXT, StackTheme.BG);
+        dc.drawText(x + 25, y + 47, Gfx.FONT_XTINY, label, Gfx.TEXT_JUSTIFY_LEFT);
     }
 
     function drawDecorativeBlocks(dc) {
-        // Graphic punctuation only. Keep these sparse so the time owns the face.
+        // Purple offset piece at right — intentionally decorative, like the mockup.
         dc.setColor(StackTheme.PURPLE, StackTheme.BG);
-        dc.fillRoundedRectangle(329, 118, 24, 34, 5);
-        dc.fillRoundedRectangle(346, 135, 24, 34, 5);
+        dc.fillRoundedRectangle(333, 132, 30, 34, 5);
+        dc.fillRoundedRectangle(351, 151, 30, 34, 5);
 
+        // Cyan stepped punctuation at the bottom-left.
         dc.setColor(StackTheme.CYAN, StackTheme.BG);
-        dc.fillRoundedRectangle(55, 327, 68, 18, 5);
-        dc.fillRoundedRectangle(103, 311, 20, 34, 5);
-
-        dc.setColor(StackTheme.YELLOW, StackTheme.BG);
-        dc.fillCircle(73, 255, 9);
+        dc.fillRoundedRectangle(112, 353, 86, 22, 5);
+        dc.fillRoundedRectangle(166, 335, 32, 40, 5);
     }
 
-    function drawSegmentDigit(dc, digit, x, y, w, h, t, color, outline) {
+    function drawAlwaysOn(dc, hour, minute) {
+        var displayHour = getDisplayHour(hour);
+        var h1 = (displayHour / 10).toNumber();
+        var h2 = displayHour % 10;
+        var m1 = (minute / 10).toNumber();
+        var m2 = minute % 10;
+
+        // AOD is intentionally its own composition: sparse, centered and quiet.
+        drawDisplayDigit(dc, h1, 105, 100, 52, 88, 12, StackTheme.AOD);
+        drawDisplayDigit(dc, h2, 161, 100, 52, 88, 12, StackTheme.AOD);
+        drawDisplayDigit(dc, m1, 205, 220, 52, 88, 12, StackTheme.AOD);
+        drawDisplayDigit(dc, m2, 261, 220, 52, 88, 12, StackTheme.AOD);
+
+        dc.setColor(StackTheme.AOD, StackTheme.BG);
+        dc.fillCircle(207, 194, 3);
+        dc.fillCircle(207, 208, 3);
+
+        dc.setColor(StackTheme.LIME, StackTheme.BG);
+        dc.fillRoundedRectangle(195, 358, 26, 3, 1);
+    }
+
+    function drawDisplayDigit(dc, digit, x, y, w, h, t, color) {
         dc.setColor(color, StackTheme.BG);
 
+        // Digits are drawn as solid poster glyphs with overlapping strokes.
+        // There are no seven-segment gaps; joints intentionally fuse together.
+        if (digit == 0) {
+            drawZero(dc, x, y, w, h, t, color);
+            return;
+        }
+        if (digit == 1) {
+            drawOne(dc, x, y, w, h, t, color);
+            return;
+        }
+        if (digit == 2) {
+            drawTwo(dc, x, y, w, h, t, color);
+            return;
+        }
+        if (digit == 3) {
+            drawThree(dc, x, y, w, h, t, color);
+            return;
+        }
+        if (digit == 4) {
+            drawFour(dc, x, y, w, h, t, color);
+            return;
+        }
+        if (digit == 5) {
+            drawFive(dc, x, y, w, h, t, color);
+            return;
+        }
+        if (digit == 6) {
+            drawSix(dc, x, y, w, h, t, color);
+            return;
+        }
+        if (digit == 7) {
+            drawSeven(dc, x, y, w, h, t, color);
+            return;
+        }
+        if (digit == 8) {
+            drawEight(dc, x, y, w, h, t, color);
+            return;
+        }
+        if (digit == 9) {
+            drawNine(dc, x, y, w, h, t, color);
+        }
+    }
+
+    function drawZero(dc, x, y, w, h, t, color) {
+        dc.setColor(color, StackTheme.BG);
+        dc.fillRoundedRectangle(x, y, w, h, 11);
+        dc.setColor(StackTheme.BG, StackTheme.BG);
+        dc.fillRoundedRectangle(x + t, y + t, w - (t * 2), h - (t * 2), 5);
+    }
+
+    function drawOne(dc, x, y, w, h, t, color) {
+        dc.setColor(color, StackTheme.BG);
+        var stemX = x + ((w - t) / 2).toNumber();
+        dc.fillRoundedRectangle(stemX, y, t, h, 6);
+        dc.fillRoundedRectangle(stemX - 18, y + 8, 30, t, 5);
+        dc.fillRoundedRectangle(stemX - 15, y + h - t, t + 38, t, 5);
+    }
+
+    function drawTwo(dc, x, y, w, h, t, color) {
+        dc.setColor(color, StackTheme.BG);
         var half = (h / 2).toNumber();
-        var horizontalW = w - t;
-        var verticalH = half - (t / 2).toNumber();
-        var radius = (t / 3).toNumber();
-
-        // A — top
-        if (segmentOn(digit, 0)) {
-            drawSegment(dc, x + (t / 2).toNumber(), y, horizontalW, t, radius, outline);
-        }
-        // B — upper right
-        if (segmentOn(digit, 1)) {
-            drawSegment(dc, x + w - t, y + (t / 2).toNumber(), t, verticalH, radius, outline);
-        }
-        // C — lower right
-        if (segmentOn(digit, 2)) {
-            drawSegment(dc, x + w - t, y + half, t, verticalH, radius, outline);
-        }
-        // D — bottom
-        if (segmentOn(digit, 3)) {
-            drawSegment(dc, x + (t / 2).toNumber(), y + h - t, horizontalW, t, radius, outline);
-        }
-        // E — lower left
-        if (segmentOn(digit, 4)) {
-            drawSegment(dc, x, y + half, t, verticalH, radius, outline);
-        }
-        // F — upper left
-        if (segmentOn(digit, 5)) {
-            drawSegment(dc, x, y + (t / 2).toNumber(), t, verticalH, radius, outline);
-        }
-        // G — middle
-        if (segmentOn(digit, 6)) {
-            drawSegment(dc, x + (t / 2).toNumber(), y + half - (t / 2).toNumber(), horizontalW, t, radius, outline);
-        }
+        barH(dc, x, y, w, t);
+        barV(dc, x + w - t, y, t, half + 4);
+        barH(dc, x, y + half - (t / 2).toNumber(), w, t);
+        barV(dc, x, y + half - 2, t, half + 2);
+        barH(dc, x, y + h - t, w, t);
     }
 
-    function drawSegment(dc, x, y, w, h, radius, outline) {
-        if (outline) {
-            dc.drawRoundedRectangle(x, y, w, h, radius);
-        } else {
-            dc.fillRoundedRectangle(x, y, w, h, radius);
-        }
+    function drawThree(dc, x, y, w, h, t, color) {
+        dc.setColor(color, StackTheme.BG);
+        var half = (h / 2).toNumber();
+        barV(dc, x + w - t, y, t, h);
+        barH(dc, x, y, w, t);
+        barH(dc, x + 8, y + half - (t / 2).toNumber(), w - 8, t);
+        barH(dc, x, y + h - t, w, t);
     }
 
-    function segmentOn(digit, segment) {
-        // Seven-segment map expressed without arrays so the known-safe runtime path
-        // stays free of container access.
-        if (digit == 0) { return segment != 6; }
-        if (digit == 1) { return segment == 1 || segment == 2; }
-        if (digit == 2) { return segment == 0 || segment == 1 || segment == 6 || segment == 4 || segment == 3; }
-        if (digit == 3) { return segment == 0 || segment == 1 || segment == 6 || segment == 2 || segment == 3; }
-        if (digit == 4) { return segment == 5 || segment == 6 || segment == 1 || segment == 2; }
-        if (digit == 5) { return segment == 0 || segment == 5 || segment == 6 || segment == 2 || segment == 3; }
-        if (digit == 6) { return segment == 0 || segment == 5 || segment == 6 || segment == 4 || segment == 2 || segment == 3; }
-        if (digit == 7) { return segment == 0 || segment == 1 || segment == 2; }
-        if (digit == 8) { return true; }
-        if (digit == 9) { return segment == 0 || segment == 5 || segment == 6 || segment == 1 || segment == 2 || segment == 3; }
-        return false;
+    function drawFour(dc, x, y, w, h, t, color) {
+        dc.setColor(color, StackTheme.BG);
+        var half = (h / 2).toNumber();
+        barV(dc, x, y, t, half + 2);
+        barV(dc, x + w - t, y, t, h);
+        barH(dc, x, y + half - (t / 2).toNumber(), w, t);
+    }
+
+    function drawFive(dc, x, y, w, h, t, color) {
+        dc.setColor(color, StackTheme.BG);
+        var half = (h / 2).toNumber();
+        barH(dc, x, y, w, t);
+        barV(dc, x, y, t, half + 3);
+        barH(dc, x, y + half - (t / 2).toNumber(), w, t);
+        barV(dc, x + w - t, y + half - 1, t, half + 1);
+        barH(dc, x, y + h - t, w, t);
+    }
+
+    function drawSix(dc, x, y, w, h, t, color) {
+        dc.setColor(color, StackTheme.BG);
+        var half = (h / 2).toNumber();
+        barH(dc, x, y, w, t);
+        barV(dc, x, y, t, h);
+        barH(dc, x, y + half - (t / 2).toNumber(), w, t);
+        barV(dc, x + w - t, y + half - 1, t, half + 1);
+        barH(dc, x, y + h - t, w, t);
+    }
+
+    function drawSeven(dc, x, y, w, h, t, color) {
+        dc.setColor(color, StackTheme.BG);
+        barH(dc, x, y, w, t);
+        barV(dc, x + w - t, y, t, h);
+    }
+
+    function drawEight(dc, x, y, w, h, t, color) {
+        dc.setColor(color, StackTheme.BG);
+        dc.fillRoundedRectangle(x, y, w, h, 11);
+        dc.setColor(StackTheme.BG, StackTheme.BG);
+        var innerW = w - (t * 2);
+        var innerH = ((h - (t * 3)) / 2).toNumber();
+        dc.fillRoundedRectangle(x + t, y + t, innerW, innerH, 4);
+        dc.fillRoundedRectangle(x + t, y + (t * 2) + innerH, innerW, innerH, 4);
+    }
+
+    function drawNine(dc, x, y, w, h, t, color) {
+        dc.setColor(color, StackTheme.BG);
+        var half = (h / 2).toNumber();
+        barH(dc, x, y, w, t);
+        barV(dc, x, y, t, half + 2);
+        barV(dc, x + w - t, y, t, h);
+        barH(dc, x, y + half - (t / 2).toNumber(), w, t);
+        barH(dc, x, y + h - t, w, t);
+    }
+
+    function barH(dc, x, y, w, h) {
+        dc.fillRoundedRectangle(x, y, w, h, 5);
+    }
+
+    function barV(dc, x, y, w, h) {
+        dc.fillRoundedRectangle(x, y, w, h, 5);
     }
 }
