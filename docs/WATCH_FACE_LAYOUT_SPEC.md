@@ -48,8 +48,8 @@ OFFSET is made from six visual objects:
 2. **Minute** — lime, lower-right, dominant
 3. **Colon** — lime punctuation between the two time masses
 4. **Date badge** — blue, compact, top-center
-5. **Utility pair** — battery upper-right + one secondary metric lower-left
-6. **Decorative punctuation** — purple and cyan blocks in leftover negative space
+5. **Utility system** — battery upper-right; weather + steps lower-left
+6. **Decorative punctuation** — one purple block in leftover negative space
 
 The time must occupy the majority of the optical weight.
 
@@ -75,9 +75,9 @@ Target zone:
 
 ```text
 center x: 208
-center y: 48–56
-width: 104–116
-height: 30–34
+center y: 42–50
+width: measured text + 24 px
+height: ~32 px
 ```
 
 Visual:
@@ -101,8 +101,8 @@ Rules:
 Target zone:
 
 ```text
-x: 286–348
-baseline y: 90–104
+x: 286–350
+baseline y: 78–96
 ```
 
 Do **not** place battery text at the same vertical level as the date badge near the top arc; the available width there collapses rapidly.
@@ -126,35 +126,38 @@ Rules:
 Target optical bounds:
 
 ```text
-x: 48–198
-y: 82–220
+x: 34–194
+y: 64–220
 ```
 
 Rules:
 
 - white
-- display font 142–160 px
+- **BionicBold system vector font**
+- current implementation target: **238 px font size**
+- always render two digits, including a leading zero in 12-hour mode
 - two digits form one visual mass
 - allow 1–4 px intentional crop into the accent zone if it increases energy
-- no visible seven-segment joints
-- no large gaps between digits
 - hour should feel heavier than all utility information combined
+
+The leading zero is intentional graphic structure, not a formatting accident. `03` is preferred to `3` because the two-digit mass keeps OFFSET balanced across every hour.
 
 ### Minute group
 
 Target optical bounds:
 
 ```text
-x: 210–365
-y: 220–344
+x: 208–372
+y: 194–350
 ```
 
 Rules:
 
 - STACK lime
-- display font same family as hour
+- **BionicBold system vector font**
+- same size/family as hour
 - approximately equal or slightly greater visual weight than hour
-- avoid descending so low that right-hand digits collide with the circle arc
+- keep the diagonal relationship tight enough that hour + colon + minute read as one composition
 - bottom-right is visually dangerous: at `y=360`, the critical safe range ends around `x=319`
 
 ### Colon
@@ -162,46 +165,70 @@ Rules:
 Target:
 
 ```text
-center x: 208–218
-upper dot y: 178–188
-lower dot y: 205–215
-radius: 6–8
+center x: 208–216
+upper dot y: 164–174
+lower dot y: 190–202
+radius: 6–7
 ```
 
 Rules:
 
 - lime
 - should read as punctuation between groups, not attach visually to the hour
-- smaller than previous prototype passes
-- can shift 2–4 px based on the active hour glyphs if optical balance requires it
+- can shift 2–4 px based on active glyphs if optical balance requires it
 
-## Secondary metric — lower-left
+## Lower-left utility system
 
-Default v1 metric: steps.
+The lower-left is functional, not decorative filler.
+
+### Weather
 
 Target zone:
 
 ```text
-x: 50–150
-y: 255–315
+x: 48–150
+y: 260–300
 ```
 
 Preferred treatment:
 
 ```text
-[run mark] 6.2K
+☀ 84°
 ```
 
 Rules:
 
-- one compact horizontal unit
-- electric-blue icon
+- yellow STACK-style sun mark
+- white temperature value
+- 22–24 px condensed bold type
+- use Garmin cached weather; no STACK connection
+- respect the user's temperature unit setting
+- if no weather is available, render `--°` rather than hiding the unit or crashing
+
+### Steps
+
+Target zone:
+
+```text
+x: 52–160
+y: 312–350
+```
+
+Preferred treatment:
+
+```text
+[shoe] 6.2K
+```
+
+Rules:
+
+- chunky cyan shoe/run mark
 - white value
 - no `STEPS` label
-- optional yellow dot may sit adjacent as decorative punctuation, not beneath as a disconnected second row
 - 22–24 px value type
+- zero in simulator must still look intentional
 
-If the metric is zero in simulator, the treatment must still look intentional.
+The previous separate cyan decorative block is removed. Cyan now has a job as the steps/run mark.
 
 ## Decorative punctuation
 
@@ -210,63 +237,45 @@ If the metric is zero in simulator, the treatment must still look intentional.
 Target zone:
 
 ```text
-x: 325–370
-y: 135–190
+x: 330–380
+y: 130–185
 ```
 
-Use a compact stepped/L form.
+Use one compact stepped/L form.
 
 It is pure visual punctuation. It does not indicate progress, training, or status.
 
-### Cyan block
-
-Target zone:
-
-```text
-x: 95–190
-y: 330–365
-```
-
-Use a horizontal stepped shape.
-
-Keep it visually subordinate to the lime minute group.
-
 ### Yellow accent
 
-Use at most one small yellow object in the high-power face.
-
-Preferred location: adjacent to the lower-left utility group.
-
-Do not scatter multiple arbitrary dots.
+Yellow is reserved for weather in the current OFFSET composition. Do not add extra arbitrary yellow dots.
 
 ## Type system
 
-### Display numerals
+### Display numerals — LOCKED
 
-Prototype priority:
+**BionicBold is the v1 display family.**
 
-1. `BionicBold` system vector font at 148–160 px
-2. `RobotoCondensedBold` system vector font at 150–164 px
-3. one custom filtered numeric font if neither has the right personality
+Simulator testing showed it has the right combination of:
 
-We should test the real glyphs before drawing another custom geometric number system.
+- heavy weight
+- compact width
+- rounded/squared personality
+- clear counters
+- strong glance readability
+- enough character to feel non-Garmin without a custom font asset
 
-Required characteristics:
+Current implementation size: **238 px**.
 
-- heavy
-- condensed enough to fit two digits in ~150 px
-- squared / assertive
-- large counters
-- readable at glance speed
-- no digital-clock / seven-segment character
+Do not return to hand-built geometric digits or seven-segment construction.
 
 ### Utility type
 
-Use system vector type at explicit sizes:
+Use scalable system type at explicit sizes:
 
-- Date: 22–24 px bold condensed
-- Battery: 20–22 px bold condensed
-- Steps / temperature: 22–24 px bold condensed
+- Date: 24 px `RobotoCondensedBold`
+- Battery: 20 px `RobotoCondensedBold`
+- Weather: 24 px `RobotoCondensedBold`
+- Steps: 24 px `RobotoCondensedBold`
 
 Do not use `FONT_XTINY` for these roles on Forerunner 265; it is 34 px tall.
 
@@ -286,46 +295,35 @@ Test at least these times:
 - `20:08`
 - `23:59`
 
-Why:
-
-- `1` is narrow
-- `0` / `8` are wide and dense
-- `4` / `7` can create unusual optical gaps
-- 12-hour mode can remove a leading zero depending on final product decision
-
-### Leading zero
-
-Decision for v1:
+### Leading zero — LOCKED
 
 - **24-hour mode:** always two-digit hour
-- **12-hour mode:** test both, but default preference is **no leading zero** if the typography/layout remains balanced
+- **12-hour mode:** always two-digit hour
 
-If no-leading-zero creates a weak upper-left mass, a leading zero is acceptable as a deliberate graphic choice.
+The leading zero is retained for visual balance.
 
 ## Measurement, not guesswork
 
-Every font-based element must be placed from measured dimensions.
+Every font-based element should be placed from measured or simulator-verified bounds.
 
 Implementation should:
 
-1. obtain vector font once
-2. call `dc.getTextDimensions()` for actual strings
-3. position the group from measured width/height
-4. use optical offsets from that measured anchor
-
-Do not hard-code an assumed glyph width as if all digits are monospaced unless the selected font actually is.
+1. obtain vector fonts once during initialization
+2. use text-width measurement for variable-width utility content
+3. position the main time from tested optical anchors
+4. use optical offsets rather than assuming a generic centered grid
 
 ## Secondary data strategy
 
-Preferred data source hierarchy:
+Current v1 paths:
 
 - time — system clock
-- date — Garmin native weekday/date complication or Gregorian fallback
-- battery — Garmin battery complication or System fallback
-- steps — Garmin steps complication or ActivityMonitor fallback
-- current weather / temperature — Garmin native complications
+- date — Gregorian weekday/date
+- battery — System stats
+- steps — ActivityMonitor
+- weather / temperature — Garmin cached `Toybox.Weather` data
 
-Weather is not required for the next visual pass. First stabilize typography and composition.
+No STACK network connection is required.
 
 ## AOD layout
 
@@ -347,7 +345,7 @@ Rules:
 - centered or near-centered rather than copying OFFSET exactly
 - only one tiny lime accent line/dot if luminance budget permits
 - no purple/cyan/yellow decorative blocks
-- no steps or battery unless later testing proves it worthwhile
+- no steps, weather, or battery in v1 AOD
 - shift static content slightly over time if required for burn-in mitigation
 
 ## Visual acceptance tests
@@ -357,23 +355,19 @@ A screenshot does not pass because all elements are technically visible.
 High-power OFFSET passes only when:
 
 - the time reads first from arm's length
-- the numerals feel like type, not assembled rectangles
+- BionicBold feels oversized and intentional
 - there is no obvious invisible centered grid
 - date and battery fit without arc clipping
-- lower-left metric reads as one designed unit
-- decorative blocks fill negative space without competing with the time
+- weather and steps read as deliberate compact utility units
+- the purple block fills negative space without competing with the time
 - the face uses the circular canvas intentionally
 - nothing looks like it came from Garmin's stock watch-face UI
 
-## Next implementation step
+## Next implementation milestone
 
-Before another layout tweak:
-
-1. remove the hand-built display digit renderer from the visual path
-2. prototype `BionicBold` vector numerals at several explicit sizes
-3. prototype `RobotoCondensedBold` as comparison
-4. capture a simulator grid of the required test times
-5. choose the display font
-6. only then lock final OFFSET coordinates
-
-That is the next design milestone.
+1. validate the 238 px BionicBold composition across the standard test-time grid
+2. adjust only optical anchors/scale from those screenshots
+3. validate cached weather behavior in simulator and on-device
+4. profile steady-state memory
+5. validate AOD with Garmin's screen heat map
+6. then consider accent-color settings or alternate layouts
