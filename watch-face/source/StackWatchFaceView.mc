@@ -26,9 +26,6 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         dc.clear();
 
         var clock = Sys.getClockTime();
-        if (clock == null) {
-            return;
-        }
 
         if (_sleeping) {
             drawAlwaysOn(dc, clock.hour, clock.min);
@@ -117,9 +114,11 @@ class StackWatchFaceView extends WatchUi.WatchFace {
             dc.fillRoundedRectangle(x + 4, y + 4, fill, 6, 1);
         }
 
+        // Avoid Number.format("%d%%"): Connect IQ rejects that format string at runtime.
+        var batteryLabel = battery.toString() + "%";
         dc.setColor(StackTheme.TEXT, StackTheme.BG);
         dc.drawText(x + 42, y - 6, Gfx.FONT_XTINY,
-            battery.format("%d%%"), Gfx.TEXT_JUSTIFY_LEFT);
+            batteryLabel, Gfx.TEXT_JUSTIFY_LEFT);
     }
 
     function drawSteps(dc, x, y) {
@@ -135,7 +134,7 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         if (steps >= 1000) {
             label = Lang.format("$1$.$2$K", [thousands, hundreds]);
         } else {
-            label = steps.format("%d");
+            label = steps.toString();
         }
 
         // Small electric-blue runner glyph built from primitives.
