@@ -19,13 +19,13 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         dc.clear();
 
         dc.setColor(StackTheme.MUTED, StackTheme.BG);
-        dc.drawText(cx, 48, Gfx.FONT_SMALL, "STACK", Gfx.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx, 42, Gfx.FONT_SMALL, "STACK", Gfx.TEXT_JUSTIFY_CENTER);
 
         dc.setColor(StackTheme.TEXT, StackTheme.BG);
-        dc.drawText(cx, 98, Gfx.FONT_NUMBER_HOT, time, Gfx.TEXT_JUSTIFY_CENTER);
+        dc.drawText(cx, 92, Gfx.FONT_NUMBER_HOT, time, Gfx.TEXT_JUSTIFY_CENTER);
 
         drawStats(dc, cx);
-        drawTower(dc, cx, 312);
+        drawTower(dc, cx, 304);
     }
 
     function drawStats(dc, cx) {
@@ -35,23 +35,26 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         if (activityInfo != null && activityInfo.steps != null) {
             stepsText = activityInfo.steps.toString();
         }
-        var batteryText = battery.toString() + "%";
+        var batteryText = battery.toNumber().toString() + "%";
+
+        dc.setColor(StackTheme.DARK, StackTheme.BG);
+        dc.fillRectangle(cx - 1, 226, 2, 62);
 
         dc.setColor(StackTheme.ORANGE, StackTheme.BG);
-        dc.drawText(84, 244, Gfx.FONT_XTINY, "STEPS", Gfx.TEXT_JUSTIFY_CENTER);
+        dc.drawText(110, 226, Gfx.FONT_XTINY, "STEPS", Gfx.TEXT_JUSTIFY_CENTER);
         dc.setColor(StackTheme.TEXT, StackTheme.BG);
-        dc.drawText(84, 278, Gfx.FONT_XTINY, stepsText, Gfx.TEXT_JUSTIFY_CENTER);
+        dc.drawText(110, 258, Gfx.FONT_SMALL, stepsText, Gfx.TEXT_JUSTIFY_CENTER);
 
         dc.setColor(StackTheme.LIME, StackTheme.BG);
-        dc.drawText(332, 244, Gfx.FONT_XTINY, "BAT", Gfx.TEXT_JUSTIFY_CENTER);
+        dc.drawText(306, 226, Gfx.FONT_XTINY, "BATTERY", Gfx.TEXT_JUSTIFY_CENTER);
         dc.setColor(StackTheme.TEXT, StackTheme.BG);
-        dc.drawText(332, 278, Gfx.FONT_XTINY, batteryText, Gfx.TEXT_JUSTIFY_CENTER);
+        dc.drawText(306, 258, Gfx.FONT_SMALL, batteryText, Gfx.TEXT_JUSTIFY_CENTER);
     }
 
     function drawTower(dc, cx, y) {
         var cols = [3, 2, 4, 1, 3, 2, 4, 2];
-        var blockW = 24;
-        var blockH = 11;
+        var blockW = 26;
+        var blockH = 12;
         var gap = 4;
         var totalW = (blockW * 8) + (gap * 7);
         var startX = cx - (totalW / 2);
