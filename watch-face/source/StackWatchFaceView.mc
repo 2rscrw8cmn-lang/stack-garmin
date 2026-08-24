@@ -160,7 +160,7 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         var spacing = 10;
 
         for (var i = 0; i < chars.size(); i += 1) {
-            var digit = chars[i] - 48;
+            var digit = chars[i].toNumber() - 48;
             drawDigit(dc, digit, x + (i * (digitWidth + spacing)), y, cell, gap, color, outline);
         }
     }
