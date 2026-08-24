@@ -13,7 +13,8 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         var w = dc.getWidth();
         var cx = w / 2;
         var clock = Sys.getClockTime();
-        var time = Lang.format("$1$:$2$", [clock.hour, clock.min.format("%02d")]);
+        var minute = clock.min < 10 ? "0" + clock.min.toString() : clock.min.toString();
+        var time = clock.hour.toString() + ":" + minute;
 
         dc.setColor(StackTheme.BG, StackTheme.BG);
         dc.clear();
@@ -31,16 +32,18 @@ class StackWatchFaceView extends WatchUi.WatchFace {
     function drawStats(dc, cx) {
         var battery = Sys.getSystemStats().battery;
         var steps = ActivityMonitor.getInfo().steps;
+        var batteryText = battery.round().toString() + "%";
+        var stepsText = steps.toString();
 
         dc.setColor(StackTheme.ORANGE, StackTheme.BG);
         dc.drawText(84, 244, Gfx.FONT_XTINY, "STEPS", Gfx.TEXT_JUSTIFY_CENTER);
         dc.setColor(StackTheme.TEXT, StackTheme.BG);
-        dc.drawText(84, 278, Gfx.FONT_XTINY, steps.format("%d"), Gfx.TEXT_JUSTIFY_CENTER);
+        dc.drawText(84, 278, Gfx.FONT_XTINY, stepsText, Gfx.TEXT_JUSTIFY_CENTER);
 
         dc.setColor(StackTheme.LIME, StackTheme.BG);
         dc.drawText(332, 244, Gfx.FONT_XTINY, "BAT", Gfx.TEXT_JUSTIFY_CENTER);
         dc.setColor(StackTheme.TEXT, StackTheme.BG);
-        dc.drawText(332, 278, Gfx.FONT_XTINY, battery.format("%.0f%%"), Gfx.TEXT_JUSTIFY_CENTER);
+        dc.drawText(332, 278, Gfx.FONT_XTINY, batteryText, Gfx.TEXT_JUSTIFY_CENTER);
     }
 
     function drawTower(dc, cx, y) {
