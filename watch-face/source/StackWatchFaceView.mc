@@ -101,8 +101,8 @@ class StackWatchFaceView extends WatchUi.WatchFace {
             label = weekdayLabel(info.day_of_week) + " " + info.day.toString();
         }
 
-        var dims = dc.getTextDimensions(label, _utilityFont);
-        var badgeW = dims[0] + 28;
+        var textW = dc.getTextWidthInPixels(label, _utilityFont);
+        var badgeW = textW + 28;
         var badgeH = 34;
         var badgeX = 208 - (badgeW / 2).toNumber();
 
