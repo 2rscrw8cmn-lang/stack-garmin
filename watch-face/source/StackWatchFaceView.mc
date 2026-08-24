@@ -1,6 +1,5 @@
 using Toybox.ActivityMonitor as ActivityMonitor;
 using Toybox.Graphics as Gfx;
-using Toybox.Lang as Lang;
 using Toybox.System as Sys;
 using Toybox.WatchUi as WatchUi;
 
@@ -31,9 +30,12 @@ class StackWatchFaceView extends WatchUi.WatchFace {
 
     function drawStats(dc, cx) {
         var battery = Sys.getSystemStats().battery;
-        var steps = ActivityMonitor.getInfo().steps;
-        var batteryText = battery.round().toString() + "%";
-        var stepsText = steps.toString();
+        var activityInfo = ActivityMonitor.getInfo();
+        var stepsText = "0";
+        if (activityInfo != null && activityInfo.steps != null) {
+            stepsText = activityInfo.steps.toString();
+        }
+        var batteryText = battery.toString() + "%";
 
         dc.setColor(StackTheme.ORANGE, StackTheme.BG);
         dc.drawText(84, 244, Gfx.FONT_XTINY, "STEPS", Gfx.TEXT_JUSTIFY_CENTER);
