@@ -25,7 +25,8 @@ v1 direction: **OFFSET**
 - day/date
 - battery
 - weather/temperature when available
-- a blue STACK running mark, carrying no numeric value in v1
+- a blue STACK running mark with a compact step count
+- a three-slot secondary-data model (battery, weather, steps by default)
 - small reusable STACK graphic pieces
 - intentionally simplified always-on state
 - no Build tower

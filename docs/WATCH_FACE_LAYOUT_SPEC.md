@@ -101,30 +101,29 @@ Rules:
 - modest radius, not a giant pill
 - keep entire badge inside the critical-content circle
 
-### Battery
+### Secondary data slots
 
-Target zone:
-
-```text
-icon:  x 288, y 76, 28 x 15, pen 3, terminal nub 3 x 7
-value: x 326, vertically centred on y 83
-```
-
-Do **not** place battery text at the same vertical level as the date badge near the top arc; the available width there collapses rapidly.
-
-Preferred treatment:
+Secondary data is not hand-placed. OFFSET has three slots, and any supported
+metric can be rendered into any of them without touching the layout.
 
 ```text
-▭ 82%
+slot   position           x    centre y   mark height   type
+A      upper-right        288      84        16 px      26 px
+B      lower-left upper    52     250        30 px      28 px
+C      lower-left lower    52     300        28 px      34 px
 ```
 
-Rules:
+A slot draws a graphic mark at `x`, then the value at `x + markWidth + 8`,
+both vertically centred on the slot's centre y. The mark reports its own
+advance, so marks of different widths line their values up correctly.
 
-- lime battery outline, internal fill proportional to charge, terminal nub
-- white value
-- 26 px type
-- compact total width
-- right edge ideally <= 360 px at this Y
+Default assignment - see `docs/WATCH_FACE.md` for why B is steps, not weather:
+
+```text
+A -> Battery      lime battery outline + 50%
+B -> Steps        blue runner + 6.2K
+C -> Temperature  yellow disc + 62°
+```
 
 ### Hour group
 
@@ -173,10 +172,10 @@ Rules:
 ### Colon
 
 ```text
-center x:    hour right edge + 14  (= 248 with the current hour box)
+center x:    hour right edge + 19  (= 253 with the current hour box)
 upper dot y: 152
 lower dot y: 190
-radius:      11
+radius:      11  (6 in always-on)
 ```
 
 Rules:
@@ -185,70 +184,73 @@ Rules:
 - anchored to the **measured** right edge of the hour group, not a fixed x, so it
   bridges the two masses whatever the digits are
 - must stay clear of the minute box top (`y = 214`)
+- the gap is 19 px, not 14: at 14 the colon crowded a `11` hour
 
 ## Lower-left utility system
 
 The lower-left is functional, not decorative filler.
 
-### Running mark
+### Marks
 
-```text
-bounding box: x 52-110, y 214-274
-```
+Every mark is drawn into a box `h` tall and returns its advance. Marks are
+built from primitives, not resources, so they cost no memory and scale with
+the slot.
 
-Rules:
+| Metric | Mark | Accent |
+|---|---|---|
+| Battery | outline, proportional fill, terminal nub | lime `#A6FF1A` |
+| Temperature | solid disc | yellow `#FFD21A` |
+| Steps | running figure | blue `#287DFF` |
+| Heart rate | two discs + triangle | pink `#FF5AC8` |
+| Body battery | two-quad bolt | cyan `#2BC6D6` |
+| Notifications | rounded bubble + tail | purple `#A14CFF` |
+| Sunrise / sunset | disc over a horizon bar | yellow `#FFD21A` |
 
-- electric blue `#287DFF`
-- chunky STACK pictogram assembled from tapered convex quads plus a head circle
-- **no numeric value in v1** - it is a mark, not a metric
+#### Running mark
 
-### Weather
+Four shapes: a head circle, one arm-and-torso stroke, two legs. That is the
+whole glyph. An anatomically detailed runner was tried and rejected - at 30 px
+the limbs merge into a tangle, so the silhouette has to carry the idea on its
+own. Do not add feet, hands, elbows or joints.
 
-```text
-disc:  centre 76, 298  radius 20
-value: x 110, vertically centred on y 298
-```
+#### Weather mark
 
-Preferred treatment:
-
-```text
-● 84°
-```
-
-Rules:
-
-- solid yellow disc `#FFD21A`; do not build a detailed meteorological icon
-- white temperature value
-- 48 px condensed bold type
+A solid disc. Do not build a detailed meteorological icon. Weather is
+deliberately the smaller of the two lower-left slots: it must read as
+secondary to the time, which an oversized disc and 48 px type did not.
 - use Garmin cached weather; no STACK connection
 - respect the user's temperature unit setting
 - if no weather is available, render `--°` rather than hiding the unit or crashing
 
-### Steps - NOT IN OFFSET v1
+### Steps
 
-No step count and no shoe mark appear in OFFSET. Cyan is decoration here, not a
-metric. Steps may return later as a different layout or a configurable option.
+Steps are a default OFFSET metric again, in slot B, as runner + `6.2K`. The
+value stays small and subordinate; it must never compete with the time.
+
+Cyan remains decoration and carries no meaning.
 
 ## Decorative punctuation
 
 ### Cyan block
 
 ```text
-98, 324  54 x 26
-98, 346  82 x 26
+104, 330  50 x 24
+104, 350  68 x 24
 ```
 
 A chunky horizontal stepped form with the taller part on the left, balancing the
 lime minute mass across the lower half. Pure decoration.
 
-Its right edge stays at `x = 180` so it clears the minute group's left edge at
-`x = 182` for every minute, including full-width pairs such as `00` and `88`.
+Its right edge stays at `x = 172`. The minute group starts at `x = 182` and its
+knockouts bleed `BLEED * cap` (about 4 px) to the left of that, so anything in
+the lower-left must keep at least 6 px clear of the minute box or the numerals
+will paint background over it.
 
 ### Purple block
 
 ```text
-320, 120  34 x 32
-344, 148  40 x 34
+322, 124  32 x 30
+346, 150  36 x 32
 ```
 
 Use one compact stepped/L form.
@@ -270,7 +272,30 @@ BionicBold was measured as the baseline candidate and rejected. It is a rounded
 grotesque - too light, too soft at the corners, and its `1` is a thin
 flag-and-stem - so its silhouette differs materially from the reference.
 
-Proportions, as fractions of cap height:
+#### Construction: solids, then knockouts
+
+Each digit is a set of SOLIDS filled in the glyph colour, then KNOCKOUTS filled
+in the **background** colour. Most digits are one chamfered silhouette plus a
+carved hole or two.
+
+This exists to kill seams. The first implementation mitred a ring into four
+trapezoids that met exactly edge to edge; anti-aliasing gave each edge partial
+coverage, the two halves composited to less than solid, and a hairline showed
+through. The glyphs read as folded, low-poly assemblies rather than type.
+
+The rule that fixes it:
+
+- a **knockout edge is a glyph edge**, drawn exactly once, so it always
+  anti-aliases cleanly
+- seams only occur where two polygons of the **same colour** meet edge to edge
+- therefore solids overlap solids, and knockouts overlap knockouts, and no
+  construction line is ever visible
+
+The consequence to remember: because counters are carved in the background
+colour, digits must be drawn onto a flat background. That is what the OFFSET
+canvas is, but it rules out drawing numerals over artwork.
+
+#### Proportions, as fractions of cap height:
 
 | Token | Value | Meaning |
 |---|---|---|
@@ -286,13 +311,23 @@ A two-digit group is therefore always `2 * 0.620 + 0.060 = 1.300` cap heights
 wide. Figures are **tabular**: `1` is drawn narrow and centred inside the shared
 advance, so the composition never resizes between times.
 
-Constraints that shaped the construction:
+Every polygon must be **convex**: Garmin's `fillPolygon` does not reliably fill
+concave outlines, and a ring cannot be one polygon at all.
 
-- every polygon must be **convex** - Garmin's `fillPolygon` does not reliably
-  fill concave outlines, and a ring cannot be one polygon at all
-- counters are therefore cut into four mitred frame pieces
-- outer corners are chamfered rather than rounded, which is both closer to the
-  reference and cheaper than arc approximation
+#### Weight
+
+`drawNumber` takes a weight multiplier that scales every stroke - including the
+diagonals of `2`, `4` and `7`, whose far edges are derived by perpendicular
+offset rather than hard-coded, so they thin with everything else.
+
+```text
+1.00  OFFSET poster weight
+0.24  always-on hairline (StackDigits.AOD_WEIGHT)
+```
+
+Chamfers scale more slowly than strokes (`0.35 + 0.65 * weight`) so thin
+numerals do not turn into octagons. The `1` additionally clamps its chamfer to
+30% of its stem: without that clamp the hairline `1` collapsed into an arrow.
 
 Do not return to seven-segment construction, and do not add a bitmap font
 resource for the time without profiling memory first.
@@ -302,8 +337,9 @@ resource for the time without profiling memory first.
 Use scalable system type at explicit sizes:
 
 - Date: 24 px `RobotoCondensedBold`
-- Battery: 26 px `RobotoCondensedBold`
-- Weather: 48 px `RobotoCondensedBold`
+- Slot A: 26 px `RobotoCondensedBold`
+- Slot B: 28 px `RobotoCondensedBold`
+- Slot C: 34 px `RobotoCondensedBold`
 
 Do not use `FONT_XTINY` for these roles on Forerunner 265; it is 34 px tall.
 
@@ -358,37 +394,49 @@ No STACK network connection is required.
 
 ## AOD layout
 
-Always-on is its own design.
+Always-on is **not** its own design. It is OFFSET in low power.
 
-Target concept:
+It reuses the same hour box, the same minute box, the same colon anchoring, the
+same date position and the same slot A - it just drops colour, drops the
+decoration, and draws the numerals at hairline weight. Waking should read as
+colour and detail turning on, never as the face rearranging itself.
 
-```text
-        10
-         :
-        42
-
-       MON 24
-```
-
-Implemented geometry:
-
-```text
-hour box:   144, 82  -> 272, 162     cap 80
-colon dots: 208, 182 and 208, 200    radius 5
-minute box: 144, 216 -> 272, 296     cap 80
-date:       centred on 208, 340      24 px
-underline:  194, 358  28 x 4         lime
-```
+There is deliberately no second geometry system to keep in sync.
 
 Rules:
 
-- same StackDigits numerals, drawn in AOD gray `#343C43`
-- vertically stacked and centred rather than copying OFFSET
-- exactly one tiny lime accent line beneath the date
-- no purple/cyan/yellow decorative blocks
-- no steps, weather, battery, or runner in v1 AOD
-- **lit-pixel budget: 9.0% of the display circle**, under Garmin's 10% always-on
-  guidance. Re-measure after any AOD change; cap height 88 pushed it to 10.6%.
+- same StackDigits numerals at `AOD_WEIGHT`, drawn in AOD gray `#343C43`
+- same hour and minute boxes as OFFSET
+- colon in the same place, radius 6 instead of 11
+- date in the same place, gray text with **no blue badge fill**
+- slot A (battery) kept, gray
+- removed: runner, steps, weather, cyan block, purple block, all bright colour
+
+#### Burn-in drift
+
+The whole composition shifts on an eight-step cycle, one step per five minutes,
+driven by `((hour * 60 + minute) / 5) % 8`. The offsets walk a 1 px ring around
+the origin. It is deterministic, costs nothing, and is imperceptible in use.
+
+#### Lit-pixel budget
+
+Measured inside the display circle, from real simulator captures:
+
+```text
+9.0%   worst case (12:00 - four heavy glyphs)
+8.5%   10:42
+```
+
+Under Garmin's 10% always-on guidance. **Re-measure after any AOD change.**
+This is a tight budget and it moved a lot during tuning:
+
+```text
+weight 0.45   13.9%   over
+weight 0.28   10.2%   over on heavy times
+weight 0.24    9.0%   shipped
+```
+
+Battery is the first thing to drop if the budget is ever exceeded again.
 
 ## Visual acceptance tests
 
@@ -400,8 +448,8 @@ High-power OFFSET passes only when:
 - the numerals feel oversized, chamfered and intentional
 - there is no obvious invisible centered grid
 - date and battery fit without arc clipping
-- the runner and weather read as deliberate compact utility units
-- no step count appears
+- the runner, steps and weather read as deliberate compact utility units
+- no numeral shows a visible internal seam or facet
 - the cyan and purple blocks fill negative space without competing with the time
 - the face uses the circular canvas intentionally
 - nothing looks like it came from Garmin's stock watch-face UI
@@ -419,11 +467,17 @@ Cropped from the Forerunner 265 simulator at 416 x 416.
 | Capture | File |
 |---|---|
 | `10:42` reference time | `screenshots/offset-1042.png` |
-| `08:58` | `screenshots/offset-0858.png` |
-| `11:11` | `screenshots/offset-1111.png` |
+| `00:58` (12-hour mode shows `12:58`) | `screenshots/offset-0058.png` |
+| `11:59` | `screenshots/offset-1159.png` |
 | `23:59` (12-hour mode shows `11:59`) | `screenshots/offset-2359.png` |
-| Always-on | `screenshots/always-on.png` |
-| No weather, no battery | `screenshots/offset-no-data.png` |
+| Always-on `10:42` | `screenshots/always-on-1042.png` |
+| Always-on `11:59` | `screenshots/always-on-1159.png` |
+| Always-on worst-case lit pixels | `screenshots/always-on-worst-case.png` |
+| Steps value formatting | `screenshots/offset-steps-formatting.png` |
+
+The simulator reports no activity data, so the shipped captures show steps as
+`0` - the correct empty state. `offset-steps-formatting.png` was taken with the
+step count stubbed, to confirm `12.3K` formats and fits.
 
 `StackWatchFaceView` carries a screenshot harness for reproducing these:
 `PIN_TIME` pins the clock (e.g. `1042`) and `PIN_SLEEP` forces the always-on

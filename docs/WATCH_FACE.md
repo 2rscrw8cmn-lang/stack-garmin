@@ -54,12 +54,36 @@ OFFSET is the first and canonical layout.
 2. Day + date
 3. Battery
 4. Current temperature/weather when available
+5. Steps
 
 Do not add additional data simply because Garmin exposes it.
 
-Steps are **not** shown in OFFSET v1. The lower-left blue runner is a STACK
-pictogram, not a labelled metric. A step count may return later as a different
-layout or a configurable option.
+### Secondary data is a slot system
+
+Secondary data goes through three slots rather than hand-placed one-off
+functions, so the face can carry genuinely useful Garmin data without being
+repainted into a corner - and without becoming a dashboard.
+
+```text
+Slot A  upper-right        default: Battery
+Slot B  lower-left upper   default: Steps
+Slot C  lower-left lower   default: Temperature
+```
+
+Supported metrics: battery, temperature, steps, heart rate, body battery,
+notification count, sunrise, sunset. Each defines its own value string, mark,
+accent colour and fallback. Nothing else is exposed; floors, calories, stress,
+respiration, training readiness, recovery, VO2 max, race predictions, intensity
+minutes and weekly mileage are explicitly out of scope for now.
+
+**Note on slot lettering.** The pass brief listed slot B as weather and slot C
+as steps, but also specified the lower-left as "runner, step value, weather
+beneath or nearby" - and the reference artwork puts the runner above the
+weather. The visual instruction won: B is steps, C is temperature. Swapping
+them is a one-line change in `initialize()`.
+
+No labels. `STEPS`, `HEART RATE` and `BODY BATTERY` are all forbidden; the mark
+plus the number has to explain itself.
 
 ## Visual language
 
@@ -150,9 +174,11 @@ Current v1 pieces:
 
 - compact battery outline/bar with a terminal nub
 - solid yellow weather disc
-- chunky blue running pictogram, built from tapered convex quads
+- blue running pictogram: four shapes, nothing smaller
 - one cyan stepped block
 - one purple stepped block
+
+Marks are drawn from primitives, never loaded as resources.
 
 Functional pieces should have a clear job. Decorative pieces should be sparse and semantically inert.
 
@@ -166,7 +192,7 @@ Avoid conventional labels such as:
 
 Prefer direct graphic treatment:
 
-- blue runner, no numeric value in v1
+- blue runner + `6.2K`
 - yellow disc + `84°`
 - lime battery symbol + `82%`
 
@@ -177,7 +203,12 @@ Current v1 data comes only from Garmin-local APIs:
 - clock — `System`
 - date — `Gregorian`
 - battery — `System`
+- steps — `ActivityMonitor`
 - weather — cached `Weather` data
+- heart rate — `Activity`, falling back to `ActivityMonitor` history
+- body battery — `SensorHistory` (requires the `SensorHistory` permission)
+- notifications — `System.DeviceSettings`
+- sunrise / sunset — `Weather.getSunrise` / `getSunset`
 
 No STACK connection is required.
 
@@ -199,15 +230,19 @@ Typography and static composition must be complete before animation work starts.
 
 Always-on mode is a deliberately different composition, not a dim copy of the full face.
 
-Keep it mostly black with:
+Always-on keeps the **same OFFSET composition**. Same hour box, same minute box,
+same colon anchoring, same date and battery positions - drawn at hairline weight
+in gray, with the colour and the decoration removed. Waking should read as
+colour and detail turning on, not as a different watch face appearing.
 
-- gray time stacked vertically: hour, colon, minute
-- gray `MON 24` toward the bottom
-- one tiny lime underline beneath the date
-- no weather, battery, runner, or decorative blocks
+- no bright lime time, no blue date badge, no yellow, no runner, no blocks
+- battery is kept, gray, and is the first thing to drop if the budget tightens
+- the whole composition drifts 1 px on an eight-step cycle, one step per five
+  minutes, for burn-in
 
-Measured lit-pixel budget inside the display circle: **9.0%**, under Garmin's
-10% always-on guidance. Any AOD change must be re-measured against that ceiling.
+Measured lit-pixel budget inside the display circle: **9.0% worst case**, under
+Garmin's 10% always-on guidance. Any AOD change must be re-measured against that
+ceiling - the hairline weight was tuned specifically to land there.
 
 The face must remain readable while respecting Garmin AMOLED low-power constraints and burn-in guidance.
 
@@ -255,17 +290,18 @@ The v1 face is successful when:
 - the tower is removed
 - StackDigits owns the main time
 - two-digit hours remain visually balanced across the full day
-- weather feels like an intentional utility object, not filler
-- no step count appears anywhere in OFFSET
+- weather feels like an intentional utility object, and clearly secondary
+- secondary data renders through the slot model, not one-off functions
 - high-power and low-power states both feel intentional
 - steady-state memory leaves meaningful headroom under the 128 KiB watch-face limit
 - no STACK account or network connection is required
 
 ## Status
 
-The target-fidelity pass is complete. OFFSET matches the reference artwork in
-the simulator at `10:42`, `08:58`, `11:11`, `23:59` and in always-on, with no
-clipping across all 24 × 60 times and 13.1 kB of 123.9 kB used.
+OFFSET matches the reference artwork in the simulator, the numerals render as
+finished type with no visible construction, always-on preserves the OFFSET
+composition at 9.0% lit pixels, and secondary data runs through the slot model.
+Steady state is 14.9 kB of 123.9 kB.
 
 ## Immediate next milestone
 

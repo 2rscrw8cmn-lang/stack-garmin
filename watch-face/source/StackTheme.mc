@@ -9,6 +9,7 @@ module StackTheme {
     const PURPLE = 0xA14CFF;
     const YELLOW = 0xFFD21A;
     const CYAN = 0x2BC6D6;
+    const PINK = 0xFF5AC8;
 
     // Always-on pixels stay sparse and subdued on AMOLED.
     const AOD = 0x343C43;

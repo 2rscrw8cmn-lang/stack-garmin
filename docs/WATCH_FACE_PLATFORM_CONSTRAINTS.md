@@ -126,8 +126,13 @@ This is important: we can request a system font at a specific pixel height inste
 
 The display numerals are **not** a font. `source/StackDigits.mc` draws `0`-`9`
 from convex polygons sized as fractions of the cap height, which keeps the
-silhouette exact and costs no font resource. Measured steady state is 13.1 kB of
+silhouette exact and costs no font resource. Measured steady state is 14.9 kB of
 the 123.9 kB reported by the simulator.
+
+Digits are drawn as solids plus background-coloured knockouts. Two same-coloured
+polygons that meet exactly edge to edge leave an anti-aliasing seam, so solids
+overlap solids and knockouts overlap knockouts; a knockout edge is a glyph edge
+and is drawn only once.
 
 Two platform facts drove that decision:
 
@@ -135,7 +140,8 @@ Two platform facts drove that decision:
   polygons only. Concave outlines and rings must be decomposed; the numerals use
   four mitred frame pieces per counter.
 - `Graphics.Dc.setAntiAlias` is available and is enabled once per update, which
-  is what makes the chamfered edges read cleanly at 140 px.
+  is what makes the chamfered edges read cleanly at 140 px. It is also why the
+  seam problem existed at all - see the knockout note above.
 
 The original strategy below is retained for the utility type, which still uses
 system vector fonts.
@@ -162,7 +168,7 @@ These are starting values, not final values:
 - Minute display: 142–160 px
 - Day/date: 22–26 px
 - Battery value: 20–24 px
-- Temperature: 48 px
+- Slot values: 26-34 px depending on slot
 - Micro labels: avoid where possible; if needed, 16–20 px
 
 Always measure with `getTextDimensions()` before placement.

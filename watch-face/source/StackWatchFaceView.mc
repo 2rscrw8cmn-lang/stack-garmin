@@ -1,25 +1,28 @@
 using Toybox.Graphics as Gfx;
 using Toybox.System as Sys;
-using Toybox.Time as Time;
+using Toybox.Time;
 using Toybox.Time.Gregorian as Gregorian;
 using Toybox.WatchUi as WatchUi;
-using Toybox.Weather as Weather;
 
 //! STACK OFFSET watch face for the Forerunner 265 (416 x 416 AMOLED).
 //!
 //! Composition rule: TIME FIRST, EVERYTHING ELSE IS PUNCTUATION. The hour sits
-//! upper-left in white, the minute lower-right in lime, and the remaining marks
-//! are small graphic notes placed in the negative space around them.
+//! upper-left in white, the minute lower-right in lime, and everything else is
+//! a small graphic note in the negative space around them.
+//!
+//! Always-on is the SAME composition, not a second layout: identical boxes,
+//! identical colon anchoring, identical date and battery positions, drawn with
+//! hairline strokes in AOD gray. Waking should read as colour and detail
+//! turning on, never as the face rearranging itself.
 class StackWatchFaceView extends WatchUi.WatchFace {
 
-    // --- screen -----------------------------------------------------------
     const CX = 208;
     const CY = 208;
 
     // --- optical boxes for the display numbers ----------------------------
     // Left, top, right, bottom. Numbers are fitted inside and bottom aligned so
-    // the baseline never moves. The boxes were chosen so the widest digit pair
-    // still clears the circular display; see docs/WATCH_FACE_LAYOUT_SPEC.md.
+    // the baseline never moves. Chosen so the widest digit pair still clears the
+    // circular display; see docs/WATCH_FACE_LAYOUT_SPEC.md.
     const HOUR_L = 46.0;
     const HOUR_T = 66.0;
     const HOUR_R = 240.0;
@@ -30,14 +33,30 @@ class StackWatchFaceView extends WatchUi.WatchFace {
     const MIN_R = 366.0;
     const MIN_B = 352.0;
 
-    const COLON_GAP = 14;
+    const COLON_GAP = 19;
     const COLON_TOP_Y = 152;
     const COLON_BOT_Y = 190;
     const COLON_R = 11;
+    const COLON_R_AOD = 6;
 
-    const AOD_HOUR_B = 162.0;
-    const AOD_MIN_B = 296.0;
-    const AOD_CAP = 80.0;
+    const DATE_Y = 26;
+    const DATE_H = 33;
+
+    // --- secondary data slots ---------------------------------------------
+    // x, centre y, mark height. Fonts are held per slot on the instance.
+    const SLOT_A_X = 288;
+    const SLOT_A_Y = 84;
+    const SLOT_A_H = 16;
+
+    const SLOT_B_X = 52;
+    const SLOT_B_Y = 250;
+    const SLOT_B_H = 30;
+
+    const SLOT_C_X = 52;
+    const SLOT_C_Y = 300;
+    const SLOT_C_H = 28;
+
+    const SLOT_GAP = 8;
 
     // Screenshot harness only. -1 uses the live clock; 1042 pins 10:42.
     // Must be -1 in anything shipped.
@@ -46,22 +65,34 @@ class StackWatchFaceView extends WatchUi.WatchFace {
     const PIN_SLEEP = false;
 
     var _sleeping = false;
+    var _slotAMetric;
+    var _slotBMetric;
+    var _slotCMetric;
     var _labelFont;
-    var _valueFont;
-    var _tempFont;
+    var _slotAFont;
+    var _slotBFont;
+    var _slotCFont;
 
     function initialize() {
         WatchFace.initialize();
 
-        // Fonts load once. The display numerals are drawn as polygons by
-        // StackDigits, so no large font resource is held for the time itself.
+        // Default OFFSET data configuration. The slot model means these can be
+        // reassigned to any StackMetrics id without touching the layout.
+        _slotAMetric = StackMetrics.BATTERY;
+        _slotBMetric = StackMetrics.STEPS;
+        _slotCMetric = StackMetrics.TEMPERATURE;
+
+        // Fonts load once. The display numerals are polygons drawn by
+        // StackDigits, so no font resource is held for the time itself.
         _labelFont = Gfx.getVectorFont({ :face => "RobotoCondensedBold", :size => 24 });
-        _valueFont = Gfx.getVectorFont({ :face => "RobotoCondensedBold", :size => 26 });
-        _tempFont = Gfx.getVectorFont({ :face => "RobotoCondensedBold", :size => 48 });
+        _slotAFont = Gfx.getVectorFont({ :face => "RobotoCondensedBold", :size => 26 });
+        _slotBFont = Gfx.getVectorFont({ :face => "RobotoCondensedBold", :size => 28 });
+        _slotCFont = Gfx.getVectorFont({ :face => "RobotoCondensedBold", :size => 34 });
 
         if (_labelFont == null) { _labelFont = Gfx.FONT_XTINY; }
-        if (_valueFont == null) { _valueFont = Gfx.FONT_XTINY; }
-        if (_tempFont == null) { _tempFont = Gfx.FONT_MEDIUM; }
+        if (_slotAFont == null) { _slotAFont = Gfx.FONT_XTINY; }
+        if (_slotBFont == null) { _slotBFont = Gfx.FONT_XTINY; }
+        if (_slotCFont == null) { _slotCFont = Gfx.FONT_SMALL; }
     }
 
     function onEnterSleep() {
@@ -93,7 +124,7 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         var minuteText = twoDigits(minute);
 
         if (_sleeping || PIN_SLEEP) {
-            drawAlwaysOn(dc, hourText, minuteText);
+            drawAlwaysOn(dc, hourText, minuteText, hour, minute);
         } else {
             drawOffset(dc, hourText, minuteText);
         }
@@ -104,24 +135,67 @@ class StackWatchFaceView extends WatchUi.WatchFace {
     // ======================================================================
 
     function drawOffset(dc, hourText, minuteText) {
-        drawDateBadge(dc);
-        drawBattery(dc);
+        drawDate(dc, StackTheme.BLUE, StackTheme.TEXT, 0, 0);
         drawPurpleBlock(dc);
 
-        var hourRight = drawHour(dc, hourText);
-        drawColon(dc, hourRight);
-        drawMinute(dc, minuteText);
+        drawDataSlot(dc, _slotAMetric, SLOT_A_X, SLOT_A_Y, SLOT_A_H, _slotAFont,
+            null, 0, 0);
 
-        drawRunner(dc);
-        drawWeather(dc);
+        var hourRight = drawHour(dc, hourText, 1.0, StackTheme.TEXT, 0, 0);
+        drawColon(dc, hourRight, StackTheme.LIME, COLON_R, 0, 0);
+        drawMinute(dc, minuteText, 1.0, StackTheme.LIME, 0, 0);
+
+        drawDataSlot(dc, _slotBMetric, SLOT_B_X, SLOT_B_Y, SLOT_B_H, _slotBFont,
+            null, 0, 0);
+        drawDataSlot(dc, _slotCMetric, SLOT_C_X, SLOT_C_Y, SLOT_C_H, _slotCFont,
+            null, 0, 0);
+
         drawCyanBlock(dc);
     }
 
+    // ======================================================================
+    // ALWAYS ON - same geometry, hairline strokes, no colour
+    // ======================================================================
+
+    function drawAlwaysOn(dc, hourText, minuteText, hour, minute) {
+        // Slow deterministic drift so a static composition never sits on the
+        // same pixels all day. One step per five minutes is imperceptible.
+        var phase = ((hour * 60 + minute) / 5) % 8;
+        var dx = shiftX(phase);
+        var dy = shiftY(phase);
+        var w = StackDigits.AOD_WEIGHT;
+
+        drawDate(dc, null, StackTheme.AOD, dx, dy);
+
+        var hourRight = drawHour(dc, hourText, w, StackTheme.AOD, dx, dy);
+        drawColon(dc, hourRight, StackTheme.AOD, COLON_R_AOD, dx, dy);
+        drawMinute(dc, minuteText, w, StackTheme.AOD, dx, dy);
+
+        drawDataSlot(dc, _slotAMetric, SLOT_A_X, SLOT_A_Y, SLOT_A_H, _slotAFont,
+            StackTheme.AOD, dx, dy);
+    }
+
+    function shiftX(phase) {
+        if (phase == 1 || phase == 2) { return 1; }
+        if (phase == 4 || phase == 5 || phase == 6) { return -1; }
+        return 0;
+    }
+
+    function shiftY(phase) {
+        if (phase == 2 || phase == 3 || phase == 4) { return 1; }
+        if (phase == 6 || phase == 7) { return -1; }
+        return 0;
+    }
+
+    // ======================================================================
+    // shared drawing
+    // ======================================================================
+
     //! Fit a display number inside an optical box and draw it.
-    //! The group is scaled to the box, centred horizontally and bottom aligned,
-    //! then its measured right edge is returned so neighbouring marks can be
-    //! placed against real geometry rather than a guessed text origin.
-    function drawDisplayGroup(dc, text, l, t, r, b, color) {
+    //! Scaled to the box, centred horizontally, bottom aligned, then its
+    //! measured right edge is returned so neighbouring marks can be placed
+    //! against real geometry rather than a guessed text origin.
+    function drawDisplayGroup(dc, text, l, t, r, b, weight, color) {
         var unit = StackDigits.unitWidth(text);
         var cap = b - t;
         var byWidth = (r - l) / unit;
@@ -131,136 +205,80 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         var x = l + ((r - l) - width) / 2.0;
         var y = b - cap;
 
-        dc.setColor(color, StackTheme.BG);
-        StackDigits.drawNumber(dc, text, x, y, cap);
-
+        StackDigits.drawNumber(dc, text, x, y, cap, weight, color, StackTheme.BG);
         return x + width;
     }
 
-    function drawHour(dc, text) {
-        return drawDisplayGroup(dc, text, HOUR_L, HOUR_T, HOUR_R, HOUR_B,
-            StackTheme.TEXT);
+    function drawHour(dc, text, weight, color, dx, dy) {
+        return drawDisplayGroup(dc, text, HOUR_L + dx, HOUR_T + dy,
+            HOUR_R + dx, HOUR_B + dy, weight, color);
     }
 
-    function drawMinute(dc, text) {
-        return drawDisplayGroup(dc, text, MIN_L, MIN_T, MIN_R, MIN_B,
-            StackTheme.LIME);
+    function drawMinute(dc, text, weight, color, dx, dy) {
+        return drawDisplayGroup(dc, text, MIN_L + dx, MIN_T + dy,
+            MIN_R + dx, MIN_B + dy, weight, color);
     }
 
     //! The colon bridges the two number masses, so it hangs off the measured
     //! right edge of the hour rather than off a fixed coordinate.
-    function drawColon(dc, hourRight) {
+    function drawColon(dc, hourRight, color, radius, dx, dy) {
         var x = (hourRight + COLON_GAP).toNumber();
-        dc.setColor(StackTheme.LIME, StackTheme.BG);
-        dc.fillCircle(x, COLON_TOP_Y, COLON_R);
-        dc.fillCircle(x, COLON_BOT_Y, COLON_R);
+        dc.setColor(color, StackTheme.BG);
+        dc.fillCircle(x, COLON_TOP_Y + dy, radius);
+        dc.fillCircle(x, COLON_BOT_Y + dy, radius);
     }
 
-    //! Small graphic label stuck onto the poster, not a UI pill.
-    function drawDateBadge(dc) {
+    //! A small graphic label stuck onto the poster, not a UI pill. In always-on
+    //! the fill is dropped and only the gray text stays, in the same place.
+    function drawDate(dc, badgeColor, textColor, dx, dy) {
         var label = dateLabel();
-        var textW = dc.getTextWidthInPixels(label, _labelFont);
-        var badgeW = textW + 24;
-        var badgeH = 33;
-        var badgeX = CX - (badgeW / 2).toNumber();
-        var badgeY = 26;
+        var cx = CX + dx;
+        var cy = DATE_Y + dy + (DATE_H / 2);
 
-        dc.setColor(StackTheme.BLUE, StackTheme.BG);
-        dc.fillRoundedRectangle(badgeX, badgeY, badgeW, badgeH, 6);
+        if (badgeColor != null) {
+            var badgeW = dc.getTextWidthInPixels(label, _labelFont) + 24;
+            dc.setColor(badgeColor, StackTheme.BG);
+            dc.fillRoundedRectangle(cx - (badgeW / 2).toNumber(), DATE_Y + dy,
+                badgeW, DATE_H, 6);
+        }
 
-        dc.setColor(StackTheme.TEXT, StackTheme.BLUE);
-        dc.drawText(CX, badgeY + (badgeH / 2), _labelFont, label,
+        dc.setColor(textColor, StackTheme.BG);
+        dc.drawText(cx, cy, _labelFont, label,
             Gfx.TEXT_JUSTIFY_CENTER | Gfx.TEXT_JUSTIFY_VCENTER);
     }
 
-    function drawBattery(dc) {
-        var pct = batteryPercent();
-        var x = 288;
-        var y = 76;
-        var w = 28;
-        var h = 15;
+    //! One secondary metric: graphic mark, then compact value. `tint` overrides
+    //! both the mark accent and the value colour for always-on.
+    function drawDataSlot(dc, metric, x, cy, iconH, font, tint, dx, dy) {
+        if (metric == StackMetrics.NONE) { return; }
 
-        dc.setColor(StackTheme.LIME, StackTheme.BG);
-        dc.setPenWidth(3);
-        dc.drawRoundedRectangle(x, y, w, h, 4);
-        dc.setPenWidth(1);
-        dc.fillRectangle(x + w + 1, y + 4, 3, 7);
+        var markColor = (tint == null) ? StackMetrics.accent(metric) : tint;
+        var textColor = (tint == null) ? StackTheme.TEXT : tint;
 
-        var fill = ((w - 8) * pct / 100).toNumber();
-        if (fill > 0) {
-            dc.fillRectangle(x + 4, y + 4, fill, 7);
-        }
+        var w = StackMetrics.drawIcon(dc, metric, x + dx, cy + dy, iconH, markColor);
 
-        dc.setColor(StackTheme.TEXT, StackTheme.BG);
-        dc.drawText(x + 38, y + 7, _valueFont, pct.toString() + "%",
-            Gfx.TEXT_JUSTIFY_LEFT | Gfx.TEXT_JUSTIFY_VCENTER);
-    }
-
-    //! Chunky STACK pictogram, not a Garmin line icon. Carries no value in v1.
-    function drawRunner(dc) {
-        dc.setColor(StackTheme.BLUE, StackTheme.BG);
-        dc.fillCircle(90, 220, 7);
-        dc.fillPolygon([[75, 231], [82, 246], [92, 242], [87, 227]]);
-        dc.fillPolygon([[83, 233], [97, 239], [99, 233], [86, 226]]);
-        dc.fillPolygon([[101, 238], [108, 228], [104, 224], [95, 234]]);
-        dc.fillPolygon([[80, 226], [67, 224], [66, 231], [78, 234]]);
-        dc.fillPolygon([[64, 225], [56, 235], [61, 239], [69, 229]]);
-        dc.fillPolygon([[83, 248], [98, 255], [102, 248], [88, 239]]);
-        dc.fillPolygon([[96, 249], [89, 263], [95, 266], [103, 253]]);
-        dc.fillPolygon([[91, 268], [101, 270], [102, 265], [93, 262]]);
-        dc.fillPolygon([[79, 240], [68, 250], [72, 257], [85, 248]]);
-        dc.fillPolygon([[67, 251], [59, 264], [64, 268], [73, 256]]);
-        dc.fillPolygon([[60, 264], [53, 268], [56, 272], [63, 269]]);
-    }
-
-    function drawWeather(dc) {
-        dc.setColor(StackTheme.YELLOW, StackTheme.BG);
-        dc.fillCircle(76, 298, 20);
-
-        dc.setColor(StackTheme.TEXT, StackTheme.BG);
-        dc.drawText(110, 298, _tempFont, temperatureLabel(),
+        dc.setColor(textColor, StackTheme.BG);
+        dc.drawText((x + dx + w + SLOT_GAP).toNumber(), cy + dy, font,
+            StackMetrics.value(metric),
             Gfx.TEXT_JUSTIFY_LEFT | Gfx.TEXT_JUSTIFY_VCENTER);
     }
 
     //! Decoration only. Balances the lime minute mass across the lower half.
     function drawCyanBlock(dc) {
         dc.setColor(StackTheme.CYAN, StackTheme.BG);
-        dc.fillRectangle(98, 324, 54, 26);
-        dc.fillRectangle(98, 346, 82, 26);
+        dc.fillRectangle(104, 330, 50, 24);
+        dc.fillRectangle(104, 350, 68, 24);
     }
 
     //! Decoration only. Fills the upper-right negative space.
     function drawPurpleBlock(dc) {
         dc.setColor(StackTheme.PURPLE, StackTheme.BG);
-        dc.fillRectangle(320, 120, 34, 32);
-        dc.fillRectangle(344, 148, 40, 34);
+        dc.fillRectangle(322, 124, 32, 30);
+        dc.fillRectangle(346, 150, 36, 32);
     }
 
     // ======================================================================
-    // ALWAYS ON
-    // ======================================================================
-
-    function drawAlwaysOn(dc, hourText, minuteText) {
-        var l = CX - 64.0;
-        var r = CX + 64.0;
-
-        drawDisplayGroup(dc, hourText, l, AOD_HOUR_B - AOD_CAP, r, AOD_HOUR_B,
-            StackTheme.AOD);
-        drawDisplayGroup(dc, minuteText, l, AOD_MIN_B - AOD_CAP, r, AOD_MIN_B,
-            StackTheme.AOD);
-
-        dc.setColor(StackTheme.AOD, StackTheme.BG);
-        dc.fillCircle(CX, 182, 5);
-        dc.fillCircle(CX, 200, 5);
-        dc.drawText(CX, 340, _labelFont, dateLabel(),
-            Gfx.TEXT_JUSTIFY_CENTER | Gfx.TEXT_JUSTIFY_VCENTER);
-
-        dc.setColor(StackTheme.LIME, StackTheme.BG);
-        dc.fillRectangle(194, 358, 28, 4);
-    }
-
-    // ======================================================================
-    // data
+    // clock data
     // ======================================================================
 
     function displayHour(hour) {
@@ -297,30 +315,5 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         if (day == 6) { return "FRI"; }
         if (day == 7) { return "SAT"; }
         return "DAY";
-    }
-
-    function batteryPercent() {
-        var stats = Sys.getSystemStats();
-        if (stats == null || stats.battery == null) {
-            return 0;
-        }
-        return stats.battery.toNumber();
-    }
-
-    //! Built by concatenation on purpose: format() has produced
-    //! "Unexpected input to format" crashes here with odd inputs.
-    function temperatureLabel() {
-        var current = Weather.getCurrentConditions();
-        if (current == null || current.temperature == null) {
-            return "--°";
-        }
-
-        var temp = current.temperature;
-        var settings = Sys.getDeviceSettings();
-        if (settings != null && settings.temperatureUnits == Sys.UNIT_STATUTE) {
-            temp = (temp * 9.0 / 5.0) + 32.0;
-        }
-
-        return temp.toNumber().toString() + "°";
     }
 }
