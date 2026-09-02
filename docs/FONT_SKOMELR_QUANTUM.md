@@ -9,21 +9,19 @@ Use it for:
 - hero time
 - primary metric numerals
 
-Do not replace it with hand-built polygon digits unless the font becomes impossible to license.
+Do not replace it with hand-built polygon digits unless a future platform limitation requires it.
 
-## Licensing gate
+## Licensing status
 
-The supplied OTF in the current design handoff is the **personal-use demo**. Public sources for the font explicitly state that the demo is personal-use only and that commercial/corporate use requires a paid license.
+The project owner reviewed the Skomelr Quantum license and cleared it for STACK/Garmin use.
 
-Therefore:
+Project policy remains:
 
-- do **not** commit the supplied demo OTF to this public repository
-- do **not** bundle it in a Connect IQ release
-- do **not** ship it in the STACK app/watch face until the correct license has been purchased
+- keep the raw OTF/TTF source file local and gitignored
+- commit only the generated Garmin bitmap font resources used by the watch face
+- do not redistribute the raw source font from this public repository
 
-The repository ignores `watch-face/fonts-src/*.otf` for this reason.
-
-Once licensed, place the licensed file locally at:
+Place the licensed source file locally at:
 
 `watch-face/fonts-src/Skomelr Quantum.otf`
 
@@ -35,14 +33,14 @@ Garmin custom font resources use bitmap font atlases. The repository includes:
 
 The generator is adapted from the MIT-licensed WinterTime-Watchface font pipeline and creates tintable AngelCode BMFont `.fnt` + PNG atlases.
 
-Initial output should include:
+Generated resources include:
 
 - `StackTime` — `0123456789:`
 - `StackMetric` — `0123456789.%-`
 
 The Forerunner 265 uses the 416×416 resource set.
 
-Because the generated glyphs are white alpha masks, Monkey C can call `dc.setColor()` before drawing the font. That makes the following feasible without separate font files:
+Because the generated glyphs are white alpha masks, Monkey C can call `dc.setColor()` before drawing the font. That supports:
 
 - hour color
 - minute color
@@ -57,4 +55,4 @@ Draw the hero time as three separately measured strings:
 - colon
 - minute
 
-Do not draw `HH:MM` as one string if user-selectable per-group colors are enabled.
+Do not draw `HH:MM` as one string when user-selectable per-group colors are enabled.
