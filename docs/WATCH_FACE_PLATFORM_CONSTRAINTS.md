@@ -46,7 +46,7 @@ Use this zone for:
 - time glyphs that must remain readable
 - day/date
 - battery value
-- steps / temperature values
+- lower metric values
 - functional icons
 
 #### Accent circle — radius 196
@@ -55,13 +55,15 @@ Decorative geometry may extend to radius **196 px**.
 
 Use this zone for:
 
-- purple/cyan/yellow punctuation blocks
-- nonessential edges of oversized numerals
-- intentional near-edge crops
+- nonessential punctuation blocks
+- intentional near-edge accents
+- decorative geometry that can tolerate bezel compression
 
-#### Outer ring — radius 196–208
+#### Functional step ring — radius 188
 
-Keep this black by default. Do not put critical information here.
+Hero Time's segmented daily-step ring currently uses a radius of **188 px** with a deliberate bottom opening above the metric shelf.
+
+The implementation retains a 16-slot angular system but renders 14 visible segments, omitting the two lowest slots so the metric area remains clear.
 
 ### Critical-content width by vertical position
 
@@ -120,58 +122,46 @@ Published scalable faces include:
 - `RobotoRegular`
 - additional language-specific faces
 
-This is important: we can request a system font at a specific pixel height instead of accepting Garmin's fixed bitmap sizes.
+System vector fonts remain appropriate for utility text such as the top row and compact labels.
 
 ### STACK font strategy — resolved for v1
 
-The display numerals are **not** a font. `source/StackDigits.mc` draws `0`-`9`
-from convex polygons sized as fractions of the cap height, which keeps the
-silhouette exact and costs no font resource. Measured steady state is 14.9 kB of
-the 123.9 kB reported by the simulator.
+Hero Time uses **Skomelr Quantum** as a custom Garmin bitmap font, generated locally from the licensed source font with:
 
-Digits are drawn as solids plus background-coloured knockouts. Two same-coloured
-polygons that meet exactly edge to edge leave an anti-aliasing seam, so solids
-overlap solids and knockouts overlap knockouts; a knockout edge is a glyph edge
-and is drawn only once.
+`watch-face/tools/gen_fonts.py`
 
-Two platform facts drove that decision:
+The generator creates tintable AngelCode BMFont `.fnt` + PNG atlases for the supported round resource sizes.
 
-- `Graphics.Dc.fillPolygon` is available on fr265 and is reliable for **convex**
-  polygons only. Concave outlines and rings must be decomposed; the numerals use
-  four mitred frame pieces per counter.
-- `Graphics.Dc.setAntiAlias` is available and is enabled once per update, which
-  is what makes the chamfered edges read cleanly at 140 px. It is also why the
-  seam problem existed at all - see the knockout note above.
+For the Forerunner 265 resource set:
 
-The original strategy below is retained for the utility type, which still uses
-system vector fonts.
+- `StackTime` uses Skomelr Quantum at approximately 94 px and contains `0123456789:`
+- `StackMetric` uses Skomelr Quantum at approximately 32 px and contains `0123456789.%-`
+- utility text uses Garmin system vector fonts where available
 
+The raw OTF/TTF source remains gitignored. Generated Garmin bitmap resources are committed.
 
-Preferred order:
+The hero time is measured and rendered as three independent strings:
 
-1. **Use a system vector font first.**
-   - `BionicBold` was tested for display numerals and rejected on fidelity: it is
-     a rounded grotesque, materially lighter and softer than the STACK reference.
-   - System vector fonts remain correct for all utility type.
-   - Test `RobotoCondensedBold` as the fallback display face.
-   - Use `RobotoCondensedBold` / `RobotoRegular` for 18–26 px metadata.
-2. If neither display font feels sufficiently STACK, introduce **one custom numeric bitmap font** filtered to only `0123456789` and required punctuation.
-3. Do not ship multiple large custom display fonts on v1 unless memory profiling proves there is room.
+- hour
+- colon
+- minute
 
-The hand-built seven-segment / rectangle-digit approach is now considered a prototype technique, not the final typography system.
+This allows independent color settings without duplicating font resources.
 
-### Proposed sizes for design exploration
+Custom font text is drawn with a transparent background so glyph bounds do not punch black rectangles through the step ring or other underlying geometry.
 
-These are starting values, not final values:
+Fallback behavior remains in the renderer for missing resources, but the committed Forerunner 265 build uses the generated Skomelr resources.
 
-- Hour display: 142–160 px
-- Minute display: 142–160 px
-- Day/date: 22–26 px
-- Battery value: 20–24 px
-- Slot values: 26-34 px depending on slot
-- Micro labels: avoid where possible; if needed, 16–20 px
+### Current implemented sizes
 
-Always measure with `getTextDimensions()` before placement.
+For the 416 × 416 Forerunner 265 resource set:
+
+- Hero time bitmap source size: approximately 94 px
+- Metric bitmap source size: approximately 32 px
+- Utility vector font: approximately 15 px requested size
+- Metric fallback vector font: approximately 26 px requested size
+
+Always measure rendered text before placement; custom glyph advance widths vary substantially, especially for `1`.
 
 ## Memory budget
 
@@ -182,23 +172,24 @@ Project working budget:
 - Target steady-state usage: **≤ 90 KiB**
 - Reserve / headroom: **≥ 38 KiB**
 
-Reasons for headroom:
+The implemented Hero Time build has been measured in the simulator at approximately **18.5 KB / 123.9 KB**, leaving substantial headroom.
+
+Reasons for preserving headroom:
 
 - font objects
-- complication callbacks/data
+- Garmin data access
 - strings and temporary objects during update
-- Garmin runtime overhead
-- future accent settings
+- runtime overhead
+- future settings or complication work
 
 ### Memory rules
 
 - Never decode a full-screen bitmap for the primary face.
 - Avoid full-screen `BufferedBitmap` or `Layer` objects.
-- Prefer primitives and system vector fonts.
-- Load any resource once during initialization, not inside `onUpdate()`.
-- If a custom font is used, filter it to required glyphs.
-- Do not duplicate large font resources merely to change color; colorize the same mask at draw time where possible.
-- Measure memory in simulator before accepting new visual resources.
+- Load resources once during layout/initialization, not inside every `onUpdate()`.
+- Keep custom font glyph sets filtered to required characters.
+- Do not duplicate large font resources merely to change color; tint the same alpha-mask resource at draw time.
+- Measure memory in the simulator before accepting new visual resources.
 
 ## AMOLED / power model
 
@@ -206,28 +197,30 @@ Reasons for headroom:
 
 The full expressive STACK face belongs in high-power mode after the wrist gesture.
 
-Use:
+Current Hero Time high-power composition includes:
 
-- full white/lime time
-- blue/purple/cyan/yellow accents
-- date, battery, one secondary metric
-- optional short wake motion later
+- multicolor Skomelr hero time
+- full-color Trainer Boi
+- segmented daily step-goal ring
+- day/date and battery row
+- three configurable lower metrics
+- black AMOLED background
 
-Garmin typically keeps the watch face in high-power mode for roughly 10 seconds after a wrist gesture.
+Do not design anything that requires continuous animation.
 
 ### Low-power / always-on state
 
 AMOLED always-on is not a dim copy of high-power mode.
 
-Garmin limits always-on rendering to approximately 10% of the display's available pixels/luminance depending on screen-protection generation, and recommends thin type, mostly black backgrounds, and moving static elements slightly to reduce burn-in risk.
+Garmin limits always-on rendering and recommends mostly black backgrounds plus conservative lit-pixel usage and burn-in mitigation.
 
 STACK rule:
 
-- AOD uses a separate composition.
+- AOD uses a separate reduced composition.
 - Black dominates.
-- Use thin gray time, not full white/lime poster glyphs.
-- No bright decorative block field.
-- Shift static content by 1–4 px over time if needed for burn-in mitigation.
+- Hero time is subdued and monochrome.
+- The step ring, lower metrics, and Trainer Boi are omitted.
+- Static content shifts slightly over time for burn-in mitigation.
 - Test with Simulator → **View Screen Heat Map** / burn-in simulation before release.
 
 ## Update cadence
@@ -235,25 +228,30 @@ STACK rule:
 Watch faces are intentionally restricted for battery life.
 
 - Sleep / low-power: normally once per minute.
-- High-power after gesture: updates can occur once per second for a short period.
+- High-power after gesture: updates can occur more frequently for a short period.
 - Do not design anything that requires continuous animation.
 - If wake animation is added later, keep it brief and limited to the high-power window.
 
 ## Data/API boundaries
 
-Garmin watch faces have less API access than full device apps.
+Hero Time v1 uses Garmin-local APIs only and has no STACK backend dependency.
 
-Appropriate v1 data:
+Implemented/selectable data includes:
 
 - current time
 - day/date
 - battery
-- steps
-- current temperature/weather through Garmin complications when available
+- daily steps and step goal progress
+- daily distance
+- heart rate when available
+- Body Battery when available
+- temperature/weather when available
+- notification count
+- sunrise / sunset
 
-Do not design around direct GPS, compass, or live sensor access from the watch face.
+Data access should fail gracefully and display a neutral fallback when the device/API cannot provide a value.
 
-### Complications are the preferred secondary-data abstraction
+### Complications remain a useful future abstraction
 
 Forerunner 265 supports the Connect IQ Complications API.
 
@@ -268,15 +266,15 @@ Useful native complication types include:
 - notification count
 - sunrise / sunset
 
-Long term, secondary watch-face data should come through the Complications API rather than several separate ad hoc data paths. Time remains a direct system-clock concern.
-
-This also gives us a clean route to the temperature/weather treatment shown in the concept mockup without connecting to STACK.
+Long term, some secondary watch-face data may be simplified through the Complications API. Time remains a direct system-clock concern.
 
 ## Rendering rules
 
 - Use `dc.getWidth()` / `dc.getHeight()` rather than assuming dimensions inside reusable helpers, even though v1 targets one device.
+- Scale reusable geometry from the 416 px reference layout.
 - Use measured text dimensions for placement.
 - Avoid load/parse work inside every `onUpdate()`.
+- Use transparent text backgrounds when text overlays functional or decorative geometry.
 - No runtime `format()` patterns that have not been simulator-tested; simple string composition is safer for tiny watch-face strings.
 - Keep decorative shapes semantically inert. They are punctuation, not implied metrics.
 
