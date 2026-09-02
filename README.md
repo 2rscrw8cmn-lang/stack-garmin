@@ -31,9 +31,9 @@ See:
 - `docs/WATCH_FACE.md` — canonical product/design contract
 - `docs/WATCH_FACE_LAYOUT_SPEC.md` — implementation zones and sizing guidance
 - `docs/TRAINER_BOI_INTEGRATION.md` — actual artwork source and Garmin treatment
-- `docs/FONT_SKOMELR_QUANTUM.md` — font pipeline and licensing gate
+- `docs/FONT_SKOMELR_QUANTUM.md` — font pipeline and licensing status
 - `docs/REFERENCE_REPOS.md` — what to reuse from public Garmin projects and what must remain reference-only
-- `docs/IMPLEMENTATION_HANDOFF.md` — execution order for the next agent
+- `docs/IMPLEMENTATION_HANDOFF.md` — implementation notes and execution history
 
 Reference mockups:
 
@@ -46,11 +46,19 @@ Forerunner 265 simulator captures of the implemented face:
 - `docs/screenshots/hero-time-fr265-steps-100.png` — completed daily step ring
 - `docs/screenshots/hero-time-fr265-aod.png` — reduced always-on composition
 
-## Important font-license gate
+## Font licensing
 
-The supplied `Skomelr Quantum.otf` is the **personal-use demo**. Do not commit, publish, bundle, or ship that font in this public repository or a distributed STACK product until the correct commercial/corporate license is purchased.
+The project owner reviewed the Skomelr Quantum license and cleared it for STACK/Garmin use.
 
-The repository intentionally ignores `watch-face/fonts-src/*.otf` and includes a font-generation pipeline that can be run locally once a licensed source file is placed there.
+The raw `.otf` / `.ttf` source files remain intentionally gitignored and local-only. The repository contains the generated Garmin bitmap font resources used by the watch face.
+
+Place the licensed source file locally at:
+
+`watch-face/fonts-src/Skomelr Quantum.otf`
+
+Then regenerate resources with:
+
+`python watch-face/tools/gen_fonts.py`
 
 ## Reuse strategy
 
@@ -78,7 +86,7 @@ Run `scripts/fetch-reference-repos.ps1` to clone the external references into a 
 4. Download the `fr265` device in SDK Manager.
 5. Open `stack-garmin.code-workspace` in VS Code.
 6. Place the properly licensed Skomelr source font at `watch-face/fonts-src/Skomelr Quantum.otf`.
-7. Run `python watch-face/tools/gen_fonts.py`.
+7. Run `python watch-face/tools/gen_fonts.py` if the generated font resources need to be refreshed.
 8. Build and run the watch face against the Forerunner 265 simulator.
 
 ## Product split
