@@ -11,6 +11,9 @@ using Toybox.WatchUi as WatchUi;
 class StackWatchFaceView extends WatchUi.WatchFace {
     const BASE_SIZE = 416.0;
     const RING_SEGMENTS = 16;
+    const METRIC_LEFT_X = 125;
+    const METRIC_CENTER_X = 208;
+    const METRIC_RIGHT_X = 291;
 
     // Screenshot harness only. Keep disabled in commits.
     const PIN_TIME = -1;
@@ -257,43 +260,43 @@ class StackWatchFaceView extends WatchUi.WatchFace {
 
     function drawMetricShelf(dc) {
         var y = px(301);
-        var left = px(52);
-        var right = px(364);
+        var left = px(92);
+        var right = px(324);
         dc.setPenWidth(px(4));
         dc.setColor(StackTheme.EMPTY, StackTheme.BG);
         dc.drawLine(left, y, right, y);
         dc.setColor(metricColor(0, _metric1), StackTheme.BG);
-        dc.drawLine(px(102), y, px(126), y);
+        dc.drawLine(px(METRIC_LEFT_X - 12), y, px(METRIC_LEFT_X + 12), y);
         dc.setColor(metricColor(1, _metric2), StackTheme.BG);
-        dc.drawLine(px(196), y, px(220), y);
+        dc.drawLine(px(METRIC_CENTER_X - 12), y, px(METRIC_CENTER_X + 12), y);
         dc.setColor(metricColor(2, _metric3), StackTheme.BG);
-        dc.drawLine(px(290), y, px(314), y);
+        dc.drawLine(px(METRIC_RIGHT_X - 12), y, px(METRIC_RIGHT_X + 12), y);
         dc.setPenWidth(1);
 
         dc.setColor(StackTheme.EMPTY, StackTheme.BG);
         for (var i = 0; i < 4; i++) {
-            dc.fillRectangle(px(149), px(319 + i * 13), px(4), px(8));
-            dc.fillRectangle(px(263), px(319 + i * 13), px(4), px(8));
+            dc.fillRectangle(px(164), px(319 + i * 13), px(4), px(8));
+            dc.fillRectangle(px(248), px(319 + i * 13), px(4), px(8));
         }
     }
 
     function drawMetrics(dc) {
-        drawMetric(dc, _metric1, 0, px(105));
-        drawMetric(dc, _metric2, 1, px(208));
-        drawMetric(dc, _metric3, 2, px(311));
+        drawMetric(dc, _metric1, 0, px(METRIC_LEFT_X));
+        drawMetric(dc, _metric2, 1, px(METRIC_CENTER_X));
+        drawMetric(dc, _metric3, 2, px(METRIC_RIGHT_X));
     }
 
     function drawMetric(dc, metric, slot, x) {
         if (metric == StackMetrics.NONE) { return; }
         var color = metricColor(slot, metric);
-        StackMetrics.drawIcon(dc, metric, x, px(315), px(18), color);
+        StackMetrics.drawIcon(dc, metric, x, px(312), px(18), color);
 
         var value = StackMetrics.value(metric);
         var font = StackMetrics.usesStackFont(metric) ? _metricFont : _metricFallbackFont;
         dc.setColor(StackTheme.TEXT, Gfx.COLOR_TRANSPARENT);
-        dc.drawText(x, px(318), font, value, Gfx.TEXT_JUSTIFY_CENTER);
+        dc.drawText(x, px(316), font, value, Gfx.TEXT_JUSTIFY_CENTER);
         dc.setColor(color, Gfx.COLOR_TRANSPARENT);
-        dc.drawText(x, px(376), _utilityFont, StackMetrics.label(metric),
+        dc.drawText(x, px(358), _utilityFont, StackMetrics.label(metric),
             Gfx.TEXT_JUSTIFY_CENTER | Gfx.TEXT_JUSTIFY_VCENTER);
     }
 
