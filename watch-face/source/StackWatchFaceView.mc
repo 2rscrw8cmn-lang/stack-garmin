@@ -278,20 +278,20 @@ class StackWatchFaceView extends WatchUi.WatchFace {
     }
 
     function drawMetrics(dc) {
-        drawMetric(dc, _metric1, 0, px(92));
+        drawMetric(dc, _metric1, 0, px(105));
         drawMetric(dc, _metric2, 1, px(208));
-        drawMetric(dc, _metric3, 2, px(324));
+        drawMetric(dc, _metric3, 2, px(311));
     }
 
     function drawMetric(dc, metric, slot, x) {
         if (metric == StackMetrics.NONE) { return; }
         var color = metricColor(slot, metric);
-        StackMetrics.drawIcon(dc, metric, x, px(321), px(22), color);
+        StackMetrics.drawIcon(dc, metric, x, px(315), px(18), color);
 
         var value = StackMetrics.value(metric);
         var font = StackMetrics.usesStackFont(metric) ? _metricFont : _metricFallbackFont;
         dc.setColor(StackTheme.TEXT, Gfx.COLOR_TRANSPARENT);
-        dc.drawText(x, px(327), font, value, Gfx.TEXT_JUSTIFY_CENTER);
+        dc.drawText(x, px(318), font, value, Gfx.TEXT_JUSTIFY_CENTER);
         dc.setColor(color, Gfx.COLOR_TRANSPARENT);
         dc.drawText(x, px(376), _utilityFont, StackMetrics.label(metric),
             Gfx.TEXT_JUSTIFY_CENTER | Gfx.TEXT_JUSTIFY_VCENTER);
