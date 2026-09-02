@@ -1,84 +1,54 @@
-# Roadmap
+# STACK Garmin Roadmap
 
-## M0 — Bootstrap
-- [x] Separate watch-face and data-field projects
-- [x] Target Forerunner 265
-- [x] Basic visual skeletons
-- [x] HR-zone utility
-- [ ] Compile both projects with the current Connect IQ SDK
+## Watch face — current priority
 
-## M1 — Watch Face Visual Reset
-- [x] Define watch face as a brand-first product, not a passive dashboard
-- [x] Select **OFFSET** as the canonical v1 layout
-- [ ] Remove the tower from the current watch-face implementation
-- [ ] Replace legacy Garmin palette with current STACK colors
-- [ ] Build the oversized asymmetric `HH : MM` composition
-- [ ] Add day/date, battery, temperature/weather, and one optional activity metric
-- [ ] Create the first reusable decorative STACK block/icon set
-- [ ] Add custom numeric display font resources
+### M1 — v2 design handoff
 
-## M2 — AMOLED + Physical Watch Validation
-- [ ] Implement a deliberately simplified low-power / always-on state
-- [ ] Review AMOLED burn-in and illuminated-area behavior
-- [ ] Add a short wake-state motion treatment if power behavior remains acceptable
-- [ ] Verify the 416×416 round safe area in simulator
-- [ ] Sideload to the physical Forerunner 265
-- [ ] Tune scale, edge spacing, and glance readability on hardware
+- [x] Lock Skomelr Quantum as the display numeral direction
+- [x] Lock actual full-color Trainer Boi as the central brand element
+- [x] Define outer segmented ring as daily step-goal progress
+- [x] Define user-selectable hour / minute / colon colors
+- [x] Define three lower metric slots
+- [x] Define separate AOD composition
+- [x] Add active + AOD reference mockups
+- [x] Document font licensing gate
+- [x] Add licensed external-reference strategy
+- [x] Add reusable MIT bitmap-font generator
 
-## M3 — Watch Face Polish
-- [ ] Refine STACK Display and STACK Mono font roles
-- [ ] Finalize icon/block geometry
-- [ ] Decide whether accent color is configurable
-- [ ] Decide whether the optional metric is configurable
-- [ ] Add 12/24-hour handling
-- [ ] Keep OFFSET as the only required production layout
+### M2 — implementation reset
 
-## M4 — Optional Watch Face Variants
-- [ ] Prototype **BLOCK** layout
-- [ ] Prototype **POSTER** layout
-- [ ] Reuse the same color, type, icon, and low-power system
-- [ ] Do not add variants until OFFSET is stable on hardware
+- [ ] Replace current OFFSET polygon numerals with generated Skomelr bitmap fonts
+- [ ] Add Trainer Boi optimized drawable/resource path
+- [ ] Add segmented step-goal ring
+- [ ] Rebuild active layout to match `WATCH_FACE_LAYOUT_SPEC.md`
+- [ ] Add curated color settings
+- [ ] Add configurable metric slots
+- [ ] Implement AOD reference state
 
-## M5 — Run Field MVP
-- [ ] Verify full-screen 416×416 rendering
-- [ ] Validate Garmin running HR zones
-- [ ] Validate pace / distance formatting
-- [ ] Test FIT simulation and FIT playback
-- [ ] Sideload to physical Forerunner 265
+### M3 — validation
 
-## M6 — Run Field Visual System
-- [ ] Match current STACK typography / spacing
-- [ ] Finalize zone block language
-- [ ] Add workout-specific screen variants where useful
-- [ ] Review power and readability during activity
+- [ ] Compile on current Connect IQ SDK
+- [ ] Validate Forerunner 265 simulator at required test times
+- [ ] Validate 12/24-hour settings
+- [ ] Validate step ring at 0 / 50 / 100%+
+- [ ] Validate all color settings
+- [ ] Measure memory and draw performance
+- [ ] Validate on physical Forerunner 265
 
-## M7 — Optional STACK Plan Sync
+### M4 — additional devices
 
-This milestone applies to the **run field**, not the v1 watch face.
+Only after the 265 is stable:
 
-- [ ] Confirm that synced plan data adds enough value to justify the backend work
-- [ ] Define a minimal watch-safe plan contract
-- [ ] Implement pairing / scoped auth only if approved
-- [ ] Fetch and cache today's workout
-- [ ] Show target zone / pace / distance in the run field
-- [ ] Preserve Garmin-only offline fallback
+- [ ] 454×454 round AMOLED
+- [ ] 390×390 round AMOLED
+- [ ] 360×360 round AMOLED
 
-## M8 — Activity Contribution
-- [ ] Decide whether any STACK-specific metrics belong in FIT
-- [ ] Add FIT contributor fields only if useful
-- [ ] Validate Garmin Connect display
+Use resource overrides and normalized anchors rather than redesigning from scratch.
 
-## M9 — Distribution
-- [ ] Maintain a simple private sideload workflow
-- [ ] Add CI builds if they reduce friction
-- [ ] Prepare Connect IQ Store assets only if publication is actually desired
+## Run field
 
-## Current execution order
+Continue independently from watch-face design work.
 
-1. OFFSET watch-face visual reset
-2. AMOLED / physical-watch validation
-3. watch-face polish
-4. run-field validation
-5. optional sync and distribution work
-
-The project should not block the watch face on STACK backend integration.
+- [ ] Keep validating HR-zone rendering
+- [ ] Validate pace / distance / elapsed-time behavior on real FIT data
+- [ ] Revisit STACK plan sync only after the local Garmin experience is stable

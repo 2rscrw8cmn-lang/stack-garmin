@@ -4,7 +4,10 @@
     <iq:products>
       <iq:product id="fr265"/>
     </iq:products>
-    <iq:permissions/>
+    <iq:permissions>
+      <!-- Body Battery is one of the selectable StackMetrics slots. -->
+      <iq:uses-permission id="SensorHistory"/>
+    </iq:permissions>
     <iq:languages><iq:language>eng</iq:language></iq:languages>
     <iq:barrels/>
   </iq:application>
