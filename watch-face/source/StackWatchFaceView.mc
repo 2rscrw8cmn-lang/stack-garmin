@@ -11,9 +11,10 @@ using Toybox.WatchUi as WatchUi;
 class StackWatchFaceView extends WatchUi.WatchFace {
     const BASE_SIZE = 416.0;
     const RING_SEGMENTS = 16;
-    const METRIC_LEFT_X = 125;
+    const RING_VISIBLE_SEGMENTS = 14;
+    const METRIC_LEFT_X = 115;
     const METRIC_CENTER_X = 208;
-    const METRIC_RIGHT_X = 291;
+    const METRIC_RIGHT_X = 301;
 
     // Screenshot harness only. Keep disabled in commits.
     const PIN_TIME = -1;
@@ -215,16 +216,18 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         var fraction = (PIN_STEPS >= 0) ? (PIN_STEPS.toFloat() / 100.0) : StackMetrics.stepFraction();
         if (fraction < 0.0) { fraction = 0.0; }
         if (fraction > 1.0) { fraction = 1.0; }
-        var filled = (fraction * RING_SEGMENTS + 0.5).toNumber();
+        var filled = (fraction * RING_VISIBLE_SEGMENTS + 0.5).toNumber();
         var radius = px(188);
         var segmentSpan = 290.0 / RING_SEGMENTS;
         dc.setPenWidth(px(8));
 
-        for (var i = 0; i < RING_SEGMENTS; i++) {
+        // Keep the original 16-slot geometry, but leave the two lowest slots
+        // open so the metric shelf has an intentional, symmetrical aperture.
+        for (var i = 1; i < RING_SEGMENTS - 1; i++) {
             var start = 215.0 + i * segmentSpan + 2.0;
             var end = 215.0 + (i + 1) * segmentSpan - 2.0;
             var color = StackTheme.EMPTY;
-            if (i < filled) {
+            if (i - 1 < filled) {
                 color = (_ringMode == 1) ? StackTheme.palette(_ringColor) : ringSegmentColor(i);
             }
             dc.setColor(color, StackTheme.BG);
@@ -260,8 +263,8 @@ class StackWatchFaceView extends WatchUi.WatchFace {
 
     function drawMetricShelf(dc) {
         var y = px(301);
-        var left = px(92);
-        var right = px(324);
+        var left = px(82);
+        var right = px(334);
         dc.setPenWidth(px(4));
         dc.setColor(StackTheme.EMPTY, StackTheme.BG);
         dc.drawLine(left, y, right, y);
@@ -275,8 +278,8 @@ class StackWatchFaceView extends WatchUi.WatchFace {
 
         dc.setColor(StackTheme.EMPTY, StackTheme.BG);
         for (var i = 0; i < 4; i++) {
-            dc.fillRectangle(px(164), px(319 + i * 13), px(4), px(8));
-            dc.fillRectangle(px(248), px(319 + i * 13), px(4), px(8));
+            dc.fillRectangle(px(160), px(319 + i * 13), px(4), px(8));
+            dc.fillRectangle(px(253), px(319 + i * 13), px(4), px(8));
         }
     }
 
