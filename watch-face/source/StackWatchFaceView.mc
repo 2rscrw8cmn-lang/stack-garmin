@@ -184,27 +184,27 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         var total = hourWidth + colonWidth + minuteWidth;
         var x = ((_width - total) / 2).toNumber();
 
-        dc.setColor(hourColor, StackTheme.BG);
+        dc.setColor(hourColor, Gfx.COLOR_TRANSPARENT);
         dc.drawText(x, y, _timeFont, hourText, Gfx.TEXT_JUSTIFY_LEFT);
         x += hourWidth;
-        dc.setColor(colonColor, StackTheme.BG);
+        dc.setColor(colonColor, Gfx.COLOR_TRANSPARENT);
         dc.drawText(x, y, _timeFont, colon, Gfx.TEXT_JUSTIFY_LEFT);
         x += colonWidth;
-        dc.setColor(minuteColor, StackTheme.BG);
+        dc.setColor(minuteColor, Gfx.COLOR_TRANSPARENT);
         dc.drawText(x, y, _timeFont, minuteText, Gfx.TEXT_JUSTIFY_LEFT);
     }
 
     function drawTopUtility(dc, dx, dy, aod) {
         var color = aod ? StackTheme.AOD : StackTheme.TEXT;
         var y = px(62) + dy;
-        dc.setColor(color, StackTheme.BG);
-        dc.drawText(px(82) + dx, y, _utilityFont, dateLabel(), Gfx.TEXT_JUSTIFY_LEFT | Gfx.TEXT_JUSTIFY_VCENTER);
-        dc.drawText(px(294) + dx, y, _utilityFont, StackMetrics.batteryPercent().toString() + "%",
+        dc.setColor(color, Gfx.COLOR_TRANSPARENT);
+        dc.drawText(px(108) + dx, y, _utilityFont, dateLabel(), Gfx.TEXT_JUSTIFY_LEFT | Gfx.TEXT_JUSTIFY_VCENTER);
+        dc.drawText(px(284) + dx, y, _utilityFont, StackMetrics.batteryPercent().toString() + "%",
             Gfx.TEXT_JUSTIFY_RIGHT | Gfx.TEXT_JUSTIFY_VCENTER);
         if (!aod) {
             dc.setColor(StackTheme.YELLOW, StackTheme.BG);
             dc.fillRectangle(px(205) + dx, px(57) + dy, px(8), px(8));
-            StackMetrics.drawIcon(dc, StackMetrics.BATTERY, px(315) + dx, y, px(15), StackTheme.LIME);
+            StackMetrics.drawIcon(dc, StackMetrics.BATTERY, px(300) + dx, y, px(15), StackTheme.LIME);
         }
     }
 
@@ -290,9 +290,9 @@ class StackWatchFaceView extends WatchUi.WatchFace {
 
         var value = StackMetrics.value(metric);
         var font = StackMetrics.usesStackFont(metric) ? _metricFont : _metricFallbackFont;
-        dc.setColor(StackTheme.TEXT, StackTheme.BG);
+        dc.setColor(StackTheme.TEXT, Gfx.COLOR_TRANSPARENT);
         dc.drawText(x, px(327), font, value, Gfx.TEXT_JUSTIFY_CENTER);
-        dc.setColor(color, StackTheme.BG);
+        dc.setColor(color, Gfx.COLOR_TRANSPARENT);
         dc.drawText(x, px(376), _utilityFont, StackMetrics.label(metric),
             Gfx.TEXT_JUSTIFY_CENTER | Gfx.TEXT_JUSTIFY_VCENTER);
     }
