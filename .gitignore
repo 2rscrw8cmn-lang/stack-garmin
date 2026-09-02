@@ -10,6 +10,6 @@
 # Local external references; inspect licenses before copying code.
 .reference-repos/
 
-# Font source files are local-only until the correct Skomelr license is purchased.
+# Raw font source files stay local; generated Garmin font resources are committed.
 watch-face/fonts-src/*.otf
 watch-face/fonts-src/*.ttf
