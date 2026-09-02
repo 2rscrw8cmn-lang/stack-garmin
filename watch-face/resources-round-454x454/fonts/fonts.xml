@@ -1,0 +1,6 @@
+<resources>
+    <fonts>
+        <font id="StackTime" filename="stack_time.fnt" antialias="true" />
+        <font id="StackMetric" filename="stack_metric.fnt" antialias="true" />
+    </fonts>
+</resources>

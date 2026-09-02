@@ -19,7 +19,7 @@ The face should communicate STACK without needing a STACK wordmark:
 - independently configurable hour / minute / colon colors
 - the actual full-color **Trainer Boi** artwork from `stack-run`
 - a segmented outer ring with a real purpose: **daily step-goal progress**
-- three configurable lower metrics, with defaults of distance/steps, heart rate, and Body Battery
+- three configurable lower metrics, with defaults of distance, heart rate, and Body Battery
 - black AMOLED background
 - bright STACK color accents taken from the canonical Trainer Boi artwork
 - deliberately simplified always-on state
@@ -39,6 +39,12 @@ Reference mockups:
 
 - `docs/screenshots/watch-face-v2-reference.png`
 - `docs/screenshots/watch-face-v2-aod-reference.png`
+
+Forerunner 265 simulator captures of the implemented face:
+
+- `docs/screenshots/hero-time-fr265-active.png` — active face at 50% of the daily step goal
+- `docs/screenshots/hero-time-fr265-steps-100.png` — completed daily step ring
+- `docs/screenshots/hero-time-fr265-aod.png` — reduced always-on composition
 
 ## Important font-license gate
 

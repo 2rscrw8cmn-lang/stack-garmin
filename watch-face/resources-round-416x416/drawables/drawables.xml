@@ -1,0 +1,4 @@
+<drawables>
+  <bitmap id="TrainerBoiColor" filename="trainer_boi_color.png" />
+  <bitmap id="TrainerBoiMono" filename="trainer_boi_mono.png" />
+</drawables>

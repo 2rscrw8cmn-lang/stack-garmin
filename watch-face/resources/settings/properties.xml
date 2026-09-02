@@ -1,0 +1,17 @@
+<properties>
+  <!-- Palette ids are resolved by StackTheme.palette(). -->
+  <property id="HourColor" type="number">0</property>
+  <property id="ColonColor" type="number">3</property>
+  <property id="MinuteColor" type="number">5</property>
+  <property id="RingMode" type="number">0</property>
+  <property id="RingColor" type="number">0</property>
+  <property id="MetricColorMode" type="number">0</property>
+  <property id="Metric1Color" type="number">0</property>
+  <property id="Metric2Color" type="number">5</property>
+  <property id="Metric3Color" type="number">7</property>
+  <property id="TrainerBoiMode" type="number">0</property>
+  <!-- Metric ids are defined by StackMetrics. -->
+  <property id="Metric1" type="number">1</property>
+  <property id="Metric2" type="number">3</property>
+  <property id="Metric3" type="number">4</property>
+</properties>

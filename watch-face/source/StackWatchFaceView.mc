@@ -1,98 +1,123 @@
+using Toybox.Application;
 using Toybox.Graphics as Gfx;
+using Toybox.Math;
 using Toybox.System as Sys;
 using Toybox.Time;
 using Toybox.Time.Gregorian as Gregorian;
 using Toybox.WatchUi as WatchUi;
 
-//! STACK OFFSET watch face for the Forerunner 265 (416 x 416 AMOLED).
-//!
-//! Composition rule: TIME FIRST, EVERYTHING ELSE IS PUNCTUATION. The hour sits
-//! upper-left in white, the minute lower-right in lime, and everything else is
-//! a small graphic note in the negative space around them.
-//!
-//! Always-on is the SAME composition, not a second layout: identical boxes,
-//! identical colon anchoring, identical date and battery positions, drawn with
-//! hairline strokes in AOD gray. Waking should read as colour and detail
-//! turning on, never as the face rearranging itself.
+//! STACK Hero Time watch face. The 416px anchors mirror the canonical mockup;
+//! all geometry is scaled from the actual round display dimensions.
 class StackWatchFaceView extends WatchUi.WatchFace {
+    const BASE_SIZE = 416.0;
+    const RING_SEGMENTS = 16;
 
-    const CX = 208;
-    const CY = 208;
-
-    // --- optical boxes for the display numbers ----------------------------
-    // Left, top, right, bottom. Numbers are fitted inside and bottom aligned so
-    // the baseline never moves. Chosen so the widest digit pair still clears the
-    // circular display; see docs/WATCH_FACE_LAYOUT_SPEC.md.
-    const HOUR_L = 46.0;
-    const HOUR_T = 66.0;
-    const HOUR_R = 240.0;
-    const HOUR_B = 206.0;
-
-    const MIN_L = 178.0;
-    const MIN_T = 214.0;
-    const MIN_R = 366.0;
-    const MIN_B = 352.0;
-
-    const COLON_GAP = 19;
-    const COLON_TOP_Y = 152;
-    const COLON_BOT_Y = 190;
-    const COLON_R = 11;
-    const COLON_R_AOD = 6;
-
-    const DATE_Y = 26;
-    const DATE_H = 33;
-
-    // --- secondary data slots ---------------------------------------------
-    // x, centre y, mark height. Fonts are held per slot on the instance.
-    const SLOT_A_X = 288;
-    const SLOT_A_Y = 84;
-    const SLOT_A_H = 16;
-
-    const SLOT_B_X = 52;
-    const SLOT_B_Y = 250;
-    const SLOT_B_H = 30;
-
-    const SLOT_C_X = 52;
-    const SLOT_C_Y = 300;
-    const SLOT_C_H = 28;
-
-    const SLOT_GAP = 8;
-
-    // Screenshot harness only. -1 uses the live clock; 1042 pins 10:42.
-    // Must be -1 in anything shipped.
+    // Screenshot harness only. Keep disabled in commits.
     const PIN_TIME = -1;
-    // Set true to force the always-on state for capture.
+    const PIN_STEPS = -1;
     const PIN_SLEEP = false;
 
+    var _width = 416;
+    var _height = 416;
+    var _scale = 1.0;
     var _sleeping = false;
-    var _slotAMetric;
-    var _slotBMetric;
-    var _slotCMetric;
-    var _labelFont;
-    var _slotAFont;
-    var _slotBFont;
-    var _slotCFont;
+
+    var _timeFont;
+    var _metricFont;
+    var _utilityFont;
+    var _metricFallbackFont;
+    var _trainerColor;
+    var _trainerMono;
+
+    var _hourColor = 0;
+    var _colonColor = 3;
+    var _minuteColor = 5;
+    var _ringMode = 0;
+    var _ringColor = 0;
+    var _metricColorMode = 0;
+    var _metric1Color = 0;
+    var _metric2Color = 5;
+    var _metric3Color = 7;
+    var _trainerMode = 0;
+    var _metric1 = StackMetrics.DISTANCE;
+    var _metric2 = StackMetrics.HEART_RATE;
+    var _metric3 = StackMetrics.BODY_BATTERY;
 
     function initialize() {
         WatchFace.initialize();
+        loadSettings();
+    }
 
-        // Default OFFSET data configuration. The slot model means these can be
-        // reassigned to any StackMetrics id without touching the layout.
-        _slotAMetric = StackMetrics.BATTERY;
-        _slotBMetric = StackMetrics.STEPS;
-        _slotCMetric = StackMetrics.TEMPERATURE;
+    function onLayout(dc) {
+        _width = dc.getWidth();
+        _height = dc.getHeight();
+        var shortSide = (_width < _height) ? _width : _height;
+        _scale = shortSide.toFloat() / BASE_SIZE;
+        loadResources();
+    }
 
-        // Fonts load once. The display numerals are polygons drawn by
-        // StackDigits, so no font resource is held for the time itself.
-        _labelFont = Gfx.getVectorFont({ :face => "RobotoCondensedBold", :size => 24 });
-        _slotAFont = Gfx.getVectorFont({ :face => "RobotoCondensedBold", :size => 26 });
-        _slotBFont = Gfx.getVectorFont({ :face => "RobotoCondensedBold", :size => 28 });
-        _slotCFont = Gfx.getVectorFont({ :face => "RobotoCondensedBold", :size => 34 });
+    function loadResources() {
+        try {
+            _timeFont = WatchUi.loadResource(Rez.Fonts.StackTime);
+            _metricFont = WatchUi.loadResource(Rez.Fonts.StackMetric);
+        } catch (e) {
+            _timeFont = null;
+            _metricFont = null;
+        }
 
-        if (_labelFont == null) { _labelFont = Gfx.FONT_XTINY; }
-        if (_slotAFont == null) { _slotAFont = Gfx.FONT_XTINY; }
-        if (_slotBFont == null) { _slotBFont = Gfx.FONT_XTINY; }
-        if (_slotCFont == null) { _slotCFont = Gfx.FONT_SMALL; }
+        if (Gfx has :getVectorFont) {
+            if (_timeFont == null) {
+                _timeFont = Gfx.getVectorFont({ :face => ["RobotoCondensedBold", "RobotoRegular"], :size => px(94) });
+            }
+            if (_metricFont == null) {
+                _metricFont = Gfx.getVectorFont({ :face => ["RobotoCondensedBold", "RobotoRegular"], :size => px(32) });
+            }
+            _utilityFont = Gfx.getVectorFont({ :face => ["RobotoCondensedBold", "RobotoRegular"], :size => px(15) });
+            _metricFallbackFont = Gfx.getVectorFont({ :face => ["RobotoCondensedBold", "RobotoRegular"], :size => px(26) });
+        }
+        if (_timeFont == null) { _timeFont = Gfx.FONT_NUMBER_MILD; }
+        if (_metricFont == null) { _metricFont = Gfx.FONT_SMALL; }
+        if (_utilityFont == null) { _utilityFont = Gfx.FONT_XTINY; }
+        if (_metricFallbackFont == null) { _metricFallbackFont = Gfx.FONT_XTINY; }
+
+        try {
+            _trainerColor = WatchUi.loadResource(Rez.Drawables.TrainerBoiColor);
+            _trainerMono = WatchUi.loadResource(Rez.Drawables.TrainerBoiMono);
+        } catch (e) {
+            _trainerColor = null;
+            _trainerMono = null;
+        }
+    }
+
+    function onShow() {
+        loadSettings();
+    }
+
+    function loadSettings() {
+        try {
+            if (Application has :Properties) {
+                _hourColor = numberSetting("HourColor", _hourColor);
+                _colonColor = numberSetting("ColonColor", _colonColor);
+                _minuteColor = numberSetting("MinuteColor", _minuteColor);
+                _ringMode = numberSetting("RingMode", _ringMode);
+                _ringColor = numberSetting("RingColor", _ringColor);
+                _metricColorMode = numberSetting("MetricColorMode", _metricColorMode);
+                _metric1Color = numberSetting("Metric1Color", _metric1Color);
+                _metric2Color = numberSetting("Metric2Color", _metric2Color);
+                _metric3Color = numberSetting("Metric3Color", _metric3Color);
+                _trainerMode = numberSetting("TrainerBoiMode", _trainerMode);
+                _metric1 = numberSetting("Metric1", _metric1);
+                _metric2 = numberSetting("Metric2", _metric2);
+                _metric3 = numberSetting("Metric3", _metric3);
+            }
+        } catch (e) {
+            // Defaults are deliberately complete and simulator-safe.
+        }
+    }
+
+    function numberSetting(key, fallback) {
+        var value = Application.Properties.getValue(key);
+        return (value == null) ? fallback : value.toNumber();
     }
 
     function onEnterSleep() {
@@ -106,13 +131,11 @@ class StackWatchFaceView extends WatchUi.WatchFace {
     }
 
     function onUpdate(dc) {
-        if (dc has :setAntiAlias) {
-            dc.setAntiAlias(true);
-        }
-
+        if (dc has :setAntiAlias) { dc.setAntiAlias(true); }
         dc.setColor(StackTheme.BG, StackTheme.BG);
         dc.clear();
 
+        StackMetrics.beginFrame();
         var clock = Sys.getClockTime();
         var hour = clock.hour;
         var minute = clock.min;
@@ -120,190 +143,207 @@ class StackWatchFaceView extends WatchUi.WatchFace {
             hour = PIN_TIME / 100;
             minute = PIN_TIME % 100;
         }
-        var hourText = twoDigits(displayHour(hour));
+        var hourText = displayHour(hour).toString();
         var minuteText = twoDigits(minute);
 
         if (_sleeping || PIN_SLEEP) {
             drawAlwaysOn(dc, hourText, minuteText, hour, minute);
         } else {
-            drawOffset(dc, hourText, minuteText);
+            drawActive(dc, hourText, minuteText);
         }
     }
 
-    // ======================================================================
-    // OFFSET
-    // ======================================================================
-
-    function drawOffset(dc, hourText, minuteText) {
-        drawDate(dc, StackTheme.BLUE, StackTheme.TEXT, 0, 0);
-        drawPurpleBlock(dc);
-
-        drawDataSlot(dc, _slotAMetric, SLOT_A_X, SLOT_A_Y, SLOT_A_H, _slotAFont,
-            null, 0, 0);
-
-        var hourRight = drawHour(dc, hourText, 1.0, StackTheme.TEXT, 0, 0);
-        drawColon(dc, hourRight, StackTheme.LIME, COLON_R, 0, 0);
-        drawMinute(dc, minuteText, 1.0, StackTheme.LIME, 0, 0);
-
-        drawDataSlot(dc, _slotBMetric, SLOT_B_X, SLOT_B_Y, SLOT_B_H, _slotBFont,
-            null, 0, 0);
-        drawDataSlot(dc, _slotCMetric, SLOT_C_X, SLOT_C_Y, SLOT_C_H, _slotCFont,
-            null, 0, 0);
-
-        drawCyanBlock(dc);
+    function drawActive(dc, hourText, minuteText) {
+        drawStepRing(dc);
+        drawTopUtility(dc, 0, 0, false);
+        drawHeroTime(dc, hourText, minuteText, px(76),
+            StackTheme.palette(_hourColor), StackTheme.palette(_colonColor), StackTheme.palette(_minuteColor));
+        drawTrainerBoi(dc);
+        drawMetricShelf(dc);
+        drawMetrics(dc);
     }
 
-    // ======================================================================
-    // ALWAYS ON - same geometry, hairline strokes, no colour
-    // ======================================================================
-
+    //! AOD is intentionally a separate reduced composition: time plus quiet
+    //! date/battery only, with no ring, metrics, or Trainer Boi bitmap.
     function drawAlwaysOn(dc, hourText, minuteText, hour, minute) {
-        // Slow deterministic drift so a static composition never sits on the
-        // same pixels all day. One step per five minutes is imperceptible.
         var phase = ((hour * 60 + minute) / 5) % 8;
-        var dx = shiftX(phase);
-        var dy = shiftY(phase);
-        var w = StackDigits.AOD_WEIGHT;
-
-        drawDate(dc, null, StackTheme.AOD, dx, dy);
-
-        var hourRight = drawHour(dc, hourText, w, StackTheme.AOD, dx, dy);
-        drawColon(dc, hourRight, StackTheme.AOD, COLON_R_AOD, dx, dy);
-        drawMinute(dc, minuteText, w, StackTheme.AOD, dx, dy);
-
-        drawDataSlot(dc, _slotAMetric, SLOT_A_X, SLOT_A_Y, SLOT_A_H, _slotAFont,
-            StackTheme.AOD, dx, dy);
+        var dx = burnInX(phase);
+        var dy = burnInY(phase);
+        drawTopUtility(dc, dx, dy, true);
+        drawHeroTime(dc, hourText, minuteText, px(88) + dy, StackTheme.AOD, StackTheme.AOD, StackTheme.AOD);
+        dc.setColor(StackTheme.AOD_FAINT, StackTheme.BG);
+        dc.fillRectangle((_width / 2) - px(2) + dx, px(327) + dy, px(4), px(4));
+        dc.fillRectangle((_width / 2) - px(46) + dx, px(366) + dy, px(92), px(2));
     }
 
-    function shiftX(phase) {
-        if (phase == 1 || phase == 2) { return 1; }
-        if (phase == 4 || phase == 5 || phase == 6) { return -1; }
-        return 0;
+    function drawHeroTime(dc, hourText, minuteText, y, hourColor, colonColor, minuteColor) {
+        var colon = ":";
+        var hourWidth = dc.getTextWidthInPixels(hourText, _timeFont);
+        var colonWidth = dc.getTextWidthInPixels(colon, _timeFont);
+        var minuteWidth = dc.getTextWidthInPixels(minuteText, _timeFont);
+        var total = hourWidth + colonWidth + minuteWidth;
+        var x = ((_width - total) / 2).toNumber();
+
+        dc.setColor(hourColor, StackTheme.BG);
+        dc.drawText(x, y, _timeFont, hourText, Gfx.TEXT_JUSTIFY_LEFT);
+        x += hourWidth;
+        dc.setColor(colonColor, StackTheme.BG);
+        dc.drawText(x, y, _timeFont, colon, Gfx.TEXT_JUSTIFY_LEFT);
+        x += colonWidth;
+        dc.setColor(minuteColor, StackTheme.BG);
+        dc.drawText(x, y, _timeFont, minuteText, Gfx.TEXT_JUSTIFY_LEFT);
     }
 
-    function shiftY(phase) {
-        if (phase == 2 || phase == 3 || phase == 4) { return 1; }
-        if (phase == 6 || phase == 7) { return -1; }
-        return 0;
-    }
-
-    // ======================================================================
-    // shared drawing
-    // ======================================================================
-
-    //! Fit a display number inside an optical box and draw it.
-    //! Scaled to the box, centred horizontally, bottom aligned, then its
-    //! measured right edge is returned so neighbouring marks can be placed
-    //! against real geometry rather than a guessed text origin.
-    function drawDisplayGroup(dc, text, l, t, r, b, weight, color) {
-        var unit = StackDigits.unitWidth(text);
-        var cap = b - t;
-        var byWidth = (r - l) / unit;
-        if (byWidth < cap) { cap = byWidth; }
-
-        var width = unit * cap;
-        var x = l + ((r - l) - width) / 2.0;
-        var y = b - cap;
-
-        StackDigits.drawNumber(dc, text, x, y, cap, weight, color, StackTheme.BG);
-        return x + width;
-    }
-
-    function drawHour(dc, text, weight, color, dx, dy) {
-        return drawDisplayGroup(dc, text, HOUR_L + dx, HOUR_T + dy,
-            HOUR_R + dx, HOUR_B + dy, weight, color);
-    }
-
-    function drawMinute(dc, text, weight, color, dx, dy) {
-        return drawDisplayGroup(dc, text, MIN_L + dx, MIN_T + dy,
-            MIN_R + dx, MIN_B + dy, weight, color);
-    }
-
-    //! The colon bridges the two number masses, so it hangs off the measured
-    //! right edge of the hour rather than off a fixed coordinate.
-    function drawColon(dc, hourRight, color, radius, dx, dy) {
-        var x = (hourRight + COLON_GAP).toNumber();
+    function drawTopUtility(dc, dx, dy, aod) {
+        var color = aod ? StackTheme.AOD : StackTheme.TEXT;
+        var y = px(62) + dy;
         dc.setColor(color, StackTheme.BG);
-        dc.fillCircle(x, COLON_TOP_Y + dy, radius);
-        dc.fillCircle(x, COLON_BOT_Y + dy, radius);
+        dc.drawText(px(82) + dx, y, _utilityFont, dateLabel(), Gfx.TEXT_JUSTIFY_LEFT | Gfx.TEXT_JUSTIFY_VCENTER);
+        dc.drawText(px(294) + dx, y, _utilityFont, StackMetrics.batteryPercent().toString() + "%",
+            Gfx.TEXT_JUSTIFY_RIGHT | Gfx.TEXT_JUSTIFY_VCENTER);
+        if (!aod) {
+            dc.setColor(StackTheme.YELLOW, StackTheme.BG);
+            dc.fillRectangle(px(205) + dx, px(57) + dy, px(8), px(8));
+            StackMetrics.drawIcon(dc, StackMetrics.BATTERY, px(315) + dx, y, px(15), StackTheme.LIME);
+        }
     }
 
-    //! A small graphic label stuck onto the poster, not a UI pill. In always-on
-    //! the fill is dropped and only the gray text stays, in the same place.
-    function drawDate(dc, badgeColor, textColor, dx, dy) {
-        var label = dateLabel();
-        var cx = CX + dx;
-        var cy = DATE_Y + dy + (DATE_H / 2);
+    function drawStepRing(dc) {
+        var fraction = (PIN_STEPS >= 0) ? (PIN_STEPS.toFloat() / 100.0) : StackMetrics.stepFraction();
+        if (fraction < 0.0) { fraction = 0.0; }
+        if (fraction > 1.0) { fraction = 1.0; }
+        var filled = (fraction * RING_SEGMENTS + 0.5).toNumber();
+        var radius = px(188);
+        var segmentSpan = 290.0 / RING_SEGMENTS;
+        dc.setPenWidth(px(8));
 
-        if (badgeColor != null) {
-            var badgeW = dc.getTextWidthInPixels(label, _labelFont) + 24;
-            dc.setColor(badgeColor, StackTheme.BG);
-            dc.fillRoundedRectangle(cx - (badgeW / 2).toNumber(), DATE_Y + dy,
-                badgeW, DATE_H, 6);
+        for (var i = 0; i < RING_SEGMENTS; i++) {
+            var start = 215.0 + i * segmentSpan + 2.0;
+            var end = 215.0 + (i + 1) * segmentSpan - 2.0;
+            var color = StackTheme.EMPTY;
+            if (i < filled) {
+                color = (_ringMode == 1) ? StackTheme.palette(_ringColor) : ringSegmentColor(i);
+            }
+            dc.setColor(color, StackTheme.BG);
+            dc.drawLine(ringX(start, radius), ringY(start, radius), ringX(end, radius), ringY(end, radius));
         }
+        dc.setPenWidth(1);
+    }
 
-        dc.setColor(textColor, StackTheme.BG);
-        dc.drawText(cx, cy, _labelFont, label,
+    function ringX(angle, radius) {
+        return (_width / 2 + Math.sin(angle * Math.PI / 180.0) * radius).toNumber();
+    }
+
+    function ringY(angle, radius) {
+        return (_height / 2 - Math.cos(angle * Math.PI / 180.0) * radius).toNumber();
+    }
+
+    function ringSegmentColor(index) {
+        if (index <= 2) { return StackTheme.CYAN; }
+        if (index <= 5) { return StackTheme.BLUE; }
+        if (index == 6) { return StackTheme.BRIGHT_BLUE; }
+        if (index <= 8) { return StackTheme.YELLOW; }
+        if (index <= 12) { return StackTheme.RED; }
+        return StackTheme.PURPLE;
+    }
+
+    function drawTrainerBoi(dc) {
+        if (_trainerMode == 2) { return; }
+        var bitmap = (_trainerMode == 1) ? _trainerMono : _trainerColor;
+        if (bitmap == null) { return; }
+        var x = ((_width - bitmap.getWidth()) / 2).toNumber();
+        dc.drawBitmap(x, px(202), bitmap);
+    }
+
+    function drawMetricShelf(dc) {
+        var y = px(301);
+        var left = px(52);
+        var right = px(364);
+        dc.setPenWidth(px(4));
+        dc.setColor(StackTheme.EMPTY, StackTheme.BG);
+        dc.drawLine(left, y, right, y);
+        dc.setColor(metricColor(0, _metric1), StackTheme.BG);
+        dc.drawLine(px(102), y, px(126), y);
+        dc.setColor(metricColor(1, _metric2), StackTheme.BG);
+        dc.drawLine(px(196), y, px(220), y);
+        dc.setColor(metricColor(2, _metric3), StackTheme.BG);
+        dc.drawLine(px(290), y, px(314), y);
+        dc.setPenWidth(1);
+
+        dc.setColor(StackTheme.EMPTY, StackTheme.BG);
+        for (var i = 0; i < 4; i++) {
+            dc.fillRectangle(px(149), px(319 + i * 13), px(4), px(8));
+            dc.fillRectangle(px(263), px(319 + i * 13), px(4), px(8));
+        }
+    }
+
+    function drawMetrics(dc) {
+        drawMetric(dc, _metric1, 0, px(92));
+        drawMetric(dc, _metric2, 1, px(208));
+        drawMetric(dc, _metric3, 2, px(324));
+    }
+
+    function drawMetric(dc, metric, slot, x) {
+        if (metric == StackMetrics.NONE) { return; }
+        var color = metricColor(slot, metric);
+        StackMetrics.drawIcon(dc, metric, x, px(321), px(22), color);
+
+        var value = StackMetrics.value(metric);
+        var font = StackMetrics.usesStackFont(metric) ? _metricFont : _metricFallbackFont;
+        dc.setColor(StackTheme.TEXT, StackTheme.BG);
+        dc.drawText(x, px(327), font, value, Gfx.TEXT_JUSTIFY_CENTER);
+        dc.setColor(color, StackTheme.BG);
+        dc.drawText(x, px(376), _utilityFont, StackMetrics.label(metric),
             Gfx.TEXT_JUSTIFY_CENTER | Gfx.TEXT_JUSTIFY_VCENTER);
     }
 
-    //! One secondary metric: graphic mark, then compact value. `tint` overrides
-    //! both the mark accent and the value colour for always-on.
-    function drawDataSlot(dc, metric, x, cy, iconH, font, tint, dx, dy) {
-        if (metric == StackMetrics.NONE) { return; }
-
-        var markColor = (tint == null) ? StackMetrics.accent(metric) : tint;
-        var textColor = (tint == null) ? StackTheme.TEXT : tint;
-
-        var w = StackMetrics.drawIcon(dc, metric, x + dx, cy + dy, iconH, markColor);
-
-        dc.setColor(textColor, StackTheme.BG);
-        dc.drawText((x + dx + w + SLOT_GAP).toNumber(), cy + dy, font,
-            StackMetrics.value(metric),
-            Gfx.TEXT_JUSTIFY_LEFT | Gfx.TEXT_JUSTIFY_VCENTER);
+    function metricColor(slot, metric) {
+        if (_metricColorMode == 1) {
+            if (slot == 0) { return StackTheme.palette(_hourColor); }
+            if (slot == 1) { return StackTheme.palette(_colonColor); }
+            return StackTheme.palette(_minuteColor);
+        }
+        if (_metricColorMode == 2) {
+            if (slot == 0) { return StackTheme.palette(_metric1Color); }
+            if (slot == 1) { return StackTheme.palette(_metric2Color); }
+            return StackTheme.palette(_metric3Color);
+        }
+        return StackMetrics.accent(metric);
     }
 
-    //! Decoration only. Balances the lime minute mass across the lower half.
-    function drawCyanBlock(dc) {
-        dc.setColor(StackTheme.CYAN, StackTheme.BG);
-        dc.fillRectangle(104, 330, 50, 24);
-        dc.fillRectangle(104, 350, 68, 24);
+    function px(value) {
+        return (value * _scale + 0.5).toNumber();
     }
 
-    //! Decoration only. Fills the upper-right negative space.
-    function drawPurpleBlock(dc) {
-        dc.setColor(StackTheme.PURPLE, StackTheme.BG);
-        dc.fillRectangle(322, 124, 32, 30);
-        dc.fillRectangle(346, 150, 36, 32);
+    function burnInX(phase) {
+        if (phase == 1 || phase == 2) { return px(2); }
+        if (phase == 4 || phase == 5 || phase == 6) { return -px(2); }
+        return 0;
     }
 
-    // ======================================================================
-    // clock data
-    // ======================================================================
+    function burnInY(phase) {
+        if (phase == 2 || phase == 3 || phase == 4) { return px(2); }
+        if (phase == 6 || phase == 7) { return -px(2); }
+        return 0;
+    }
 
     function displayHour(hour) {
         var settings = Sys.getDeviceSettings();
         if (settings != null && !settings.is24Hour) {
             var twelve = hour % 12;
-            if (twelve == 0) { twelve = 12; }
-            return twelve;
+            return (twelve == 0) ? 12 : twelve;
         }
         return hour;
     }
 
     function twoDigits(value) {
-        if (value < 10) {
-            return "0" + value.toString();
-        }
-        return value.toString();
+        return (value < 10) ? "0" + value.toString() : value.toString();
     }
 
     function dateLabel() {
         var info = Gregorian.info(Time.now(), Time.FORMAT_SHORT);
-        if (info == null || info.day == null) {
-            return "STACK";
-        }
-        return weekdayLabel(info.day_of_week) + " " + info.day.toString();
+        if (info == null || info.day == null || info.month == null) { return "DAY --/--"; }
+        return weekdayLabel(info.day_of_week) + " " + info.month.toString() + "/" + info.day.toString();
     }
 
     function weekdayLabel(day) {
