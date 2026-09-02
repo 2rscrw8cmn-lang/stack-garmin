@@ -1,310 +1,211 @@
-# STACK Watch Face
+# STACK Watch Face — Canonical v2 Direction
 
 ## Product intent
 
 The STACK watch face is a **brand object first and a utility second**.
 
-It should look like a watch face STACK designed, not like a Garmin dashboard wearing STACK colors.
+It should feel unmistakably STACK without printing the word STACK on the face. Identity comes from the numeric type, Trainer Boi, color behavior, chunky geometry, and playful composition.
 
-The face does **not** need to connect to the STACK app, represent the Build tower, or expose training-plan data. It should be useful on its own and rely only on Garmin-local data for v1.
+The face must still behave like a real Garmin watch face: glanceable time, power-safe AMOLED behavior, limited data density, and practical Forerunner 265 performance.
 
-## Design documents
+## Canonical direction — STACK Hero Time
 
-This file defines product intent and direction.
+The previous OFFSET layout is superseded.
 
-Implementation and layout work must also follow:
+### Hierarchy
 
-- `WATCH_FACE_PLATFORM_CONSTRAINTS.md` — Forerunner 265 hardware, memory, AMOLED, font, API, and round-screen constraints.
-- `WATCH_FACE_LAYOUT_SPEC.md` — the canonical OFFSET coordinate system, typography plan, safe areas, test times, and visual acceptance criteria.
+1. Hero time
+2. Trainer Boi
+3. Step-progress ring
+4. Three compact lower metrics
+5. Day/date and battery utility row
 
-Do not make visual implementation passes by eyeballing a single simulator screenshot. The platform and layout docs are the source of truth.
+No additional information should be added merely because Garmin exposes it.
 
-## Design principle
+## Hero time
 
-> **Big time. Bright STACK color. Chunky graphic personality. Minimal data.**
+Use **Skomelr Quantum** for the main time.
 
-The STACK app itself keeps a relatively quiet shell around stronger running data. The watch face can invert that balance because it has no forms, lists, navigation, or long-form reading to protect.
+Required behavior:
 
-For the watch face, visual identity should be approximately:
+- hour, colon, and minute are separate draw objects
+- each can be assigned a different user-selectable color
+- default active palette:
+  - hour: STACK cyan/teal
+  - colon: STACK yellow
+  - minute: STACK red-orange
+- monochrome and single-color modes are also supported
+- respect the device 12/24-hour preference
+- keep the time centered optically even though each color group is drawn separately
 
-- 80% expressive STACK / Performance Arcade
-- 20% quiet utility
+The font must come from generated Garmin bitmap-font resources, not hand-built polygon digits.
 
-Avoid a generic fitness-dashboard composition of centered time plus rows of tiny metrics.
+## Trainer Boi
 
-## v1 direction — OFFSET
+Use the actual canonical full-color STACK runner artwork, not a generic runner icon and not an AI approximation.
 
-OFFSET is the first and canonical layout.
+Source:
 
-### Composition
+`watch-face/artwork/trainer-boi-full-color.svg`
 
-- Oversized split time: `HH` and `MM` are separate graphic objects.
-- Asymmetric placement rather than a centered digital-clock row.
-- The colon is a small STACK accent object.
-- Time is the dominant visual element and may approach the circular safe-area edges.
-- Day/date lives in one compact bright badge.
-- Battery sits in the upper-right utility zone.
-- A blue running mark and a weather mark form a purposeful lower-left utility stack.
-- A cyan block and a purple block occupy negative space as pure graphic punctuation.
-- No on-face STACK wordmark is required; the visual system itself is the branding.
+Default active treatment:
 
-### Required v1 information
+- full color
+- centered beneath the hero time
+- approximately 72–90 px high on the 416×416 target, tuned in simulator
+- no label and no surrounding card
 
-1. Time
-2. Day + date
-3. Battery
-4. Current temperature/weather when available
-5. Steps
+Trainer Boi is a brand anchor, not a data icon.
 
-Do not add additional data simply because Garmin exposes it.
+User setting:
 
-### Secondary data is a slot system
+- Full Color
+- Mono
+- Off
 
-Secondary data goes through three slots rather than hand-placed one-off
-functions, so the face can carry genuinely useful Garmin data without being
-repainted into a corner - and without becoming a dashboard.
+See `TRAINER_BOI_INTEGRATION.md`.
 
-```text
-Slot A  upper-right        default: Battery
-Slot B  lower-left upper   default: Steps
-Slot C  lower-left lower   default: Temperature
-```
+## Outer segmented ring
 
-Supported metrics: battery, temperature, steps, heart rate, body battery,
-notification count, sunrise, sunset. Each defines its own value string, mark,
-accent colour and fallback. Nothing else is exposed; floors, calories, stress,
-respiration, training readiness, recovery, VO2 max, race predictions, intensity
-minutes and weekly mileage are explicitly out of scope for now.
+The outer ring is **not decoration**.
 
-**Note on slot lettering.** The pass brief listed slot B as weather and slot C
-as steps, but also specified the lower-left as "runner, step value, weather
-beneath or nearby" - and the reference artwork puts the runner above the
-weather. The visual instruction won: B is steps, C is temperature. Swapping
-them is a one-line change in `initialize()`.
+Canonical meaning: **daily steps as a percentage of the Garmin step goal**.
 
-No labels. `STEPS`, `HEART RATE` and `BODY BATTERY` are all forbidden; the mark
-plus the number has to explain itself.
+Behavior:
 
-## Visual language
+- segmented rather than a continuous gauge
+- empty segments remain dark charcoal
+- filled segments progress around the upper/side perimeter
+- multicolor STACK mode is the default
+- optional single-color mode uses the user's ring color setting
+- keep a visual break at the bottom so the ring does not box in the metrics
 
-### Color
+Do not use the ring for heart-rate zones on the everyday watch face.
 
-Use the current STACK palette from the main `stack-run` design system as the source of truth.
+## Lower metrics
 
-Core watch colors:
+Three compact slots sit beneath Trainer Boi.
 
-- Background — `#03070A`
-- White — `#F6F7F8`
-- STACK lime — `#A6FF1A`
-- Electric blue — `#287DFF`
-- Purple — `#A14CFF`
-- Yellow — `#FFD21A`
-- Cyan — `#2BC6D6`
-- Orange — `#FF9F43`
-- Pink — `#FF5AC8`
+Default slots:
 
-A single face should normally use black + white + lime + a limited set of secondary accents with defined jobs.
+1. distance / steps summary
+2. heart rate
+3. Body Battery
 
-Current OFFSET roles:
+The exact Garmin-local value can be configurable, but v1 should expose a curated list rather than every possible complication.
 
-- blue — date badge and the running mark
-- yellow — weather
-- cyan — decorative punctuation
-- purple — decorative punctuation
+Recommended available metrics:
 
-The old Garmin-specific orange / blue / muted-lime palette is deprecated, and
-orange and pink are not used by OFFSET at all.
+- steps
+- distance
+- heart rate
+- Body Battery
+- battery
+- temperature
+- notification count
+- sunrise / sunset
 
-### Typography — LOCKED FOR v1
+Keep metric labels abbreviated (`MI`, `HR`, `BB`) or use simple graphic marks. Avoid Garmin-style dense dashboard labels.
 
-The Forerunner 265 supports scalable system fonts at explicit pixel sizes. Its fixed `FONT_XTINY` is already about 34 px tall, so Garmin's named bitmap sizes are not appropriate for small metadata by name alone.
+## Top utility row
 
-#### Display numerals — STACK NUMERALS
+Small and quiet:
 
-**The v1 display face is `StackDigits`, a purpose-built numeral set drawn as
-convex polygons.**
+- left: day + date
+- right: battery percentage / battery mark
 
-BionicBold was tested as the baseline candidate and rejected on fidelity. Measured
-against the reference artwork it is a rounded grotesque: too light, too soft in
-the corners, and its `1` is a thin flag-and-stem. The reference numerals are
-poster-weight with chamfered outer corners and large counters, which no device
-font on the Forerunner 265 provides.
+This row stays subordinate to the time.
 
-`source/StackDigits.mc` builds each of `0`–`9` from convex polygons expressed as
-fractions of the cap height. Every emitted shape is convex because Garmin's
-`fillPolygon` does not reliably fill concave outlines; counters are cut with
-mitred frame pieces instead.
+## Color system
 
-Why polygons rather than a filtered custom bitmap font:
+Use colors derived from the canonical Trainer Boi artwork in `stack-run`.
 
-- exact silhouette control at any cap height
-- no font resource in the 128 KiB budget (measured steady state: **13.1 kB**)
-- analytically known metrics, so placement never guesses a text origin
-- scales cleanly between the OFFSET and always-on cap heights
+Primary usable watch colors:
 
-The numerals are **tabular**: every digit shares one advance and `1` is drawn
-narrow inside it. That means every hour and minute pair is exactly the same
-width, so the composition never resizes as the clock ticks.
+- Cyan — `#02BCC0`
+- Bright blue — `#0CB9FC`
+- Blue — `#0A66DA`
+- Yellow — `#FCBC12`
+- Orange — `#FC9809`
+- Red-orange — `#FD4E2E`
+- Lime — `#65FC04`
+- Purple — `#8537DF`
+- Deep purple — `#4C229E`
+- Background — near-black / black
+- Utility text — off-white
 
-The main time must:
+Do not substitute an unrelated generic neon palette.
 
-- look like real display typography
-- feel heavy and condensed
-- avoid seven-segment / LED-clock character
-- remain readable at glance speed
-- render as two-digit hour + two-digit minute masses
+### User color settings
 
-The leading zero is intentional in both 12-hour and 24-hour mode because it stabilizes the upper-left visual mass.
+Expose a curated STACK palette for:
 
-#### Utility type
+- hour color
+- minute color
+- colon color
+- ring mode: multicolor / single color
+- ring single color
+- metric color mode: automatic / match time / individual
 
-Use scalable `RobotoCondensedBold` at explicit sizes:
+Unlimited RGB input is not required for v1.
 
-- day/date: 24 px
-- battery: 26 px
-- weather/temperature: 48 px
+## Active / high-power state
 
-Measure variable-width strings before final positioning where useful.
+The active state may use:
 
-## Graphic pieces
+- full-color hero time
+- full-color Trainer Boi
+- multicolor step-progress ring
+- all three lower metrics
+- top utility row
 
-The face uses a small graphic kit rather than a Build tower.
-
-Current v1 pieces:
-
-- compact battery outline/bar with a terminal nub
-- solid yellow weather disc
-- blue running pictogram: four shapes, nothing smaller
-- one cyan stepped block
-- one purple stepped block
-
-Marks are drawn from primitives, never loaded as resources.
-
-Functional pieces should have a clear job. Decorative pieces should be sparse and semantically inert.
-
-## Data presentation
-
-Avoid conventional labels such as:
-
-- `STEPS 6247`
-- `BATTERY 82%`
-- dense grids of complications
-
-Prefer direct graphic treatment:
-
-- blue runner + `6.2K`
-- yellow disc + `84°`
-- lime battery symbol + `82%`
-
-Color and geometry should help recognition, but the numeric value remains readable.
-
-Current v1 data comes only from Garmin-local APIs:
-
-- clock — `System`
-- date — `Gregorian`
-- battery — `System`
-- steps — `ActivityMonitor`
-- weather — cached `Weather` data
-- heart rate — `Activity`, falling back to `ActivityMonitor` history
-- body battery — `SensorHistory` (requires the `SensorHistory` permission)
-- notifications — `System.DeviceSettings`
-- sunrise / sunset — `Weather.getSunrise` / `getSunset`
-
-No STACK connection is required.
-
-## High-power / wake state
-
-When the user raises the wrist, the full face uses the complete color treatment.
-
-A short wake animation is allowed later if it remains subtle and power-safe. Preferred behavior:
-
-- main numerals snap or settle into place
-- one small STACK block slides/lands
-- total visual motion roughly 250–400 ms
-
-Do not build a continuous arcade animation.
-
-Typography and static composition must be complete before animation work starts.
+Keep animations optional and brief. No continuous running animation.
 
 ## Always-on / low-power state
 
-Always-on mode is a deliberately different composition, not a dim copy of the full face.
+AOD is a separate reduced composition, not a dim copy of the active face.
 
-Always-on keeps the **same OFFSET composition**. Same hour box, same minute box,
-same colon anchoring, same date and battery positions - drawn at hairline weight
-in gray, with the colour and the decoration removed. Waking should read as
-colour and detail turning on, not as a different watch face appearing.
+Required direction:
 
-- no bright lime time, no blue date badge, no yellow, no runner, no blocks
-- battery is kept, gray, and is the first thing to drop if the budget tightens
-- the whole composition drifts 1 px on an eight-step cycle, one step per five
-  minutes, for burn-in
+- black background
+- single dim time color
+- day/date and battery only if pixel budget allows
+- no step-progress ring
+- no lower metrics
+- Trainer Boi hidden by default
+- minimal lit pixels and no continuous motion
 
-Measured lit-pixel budget inside the display circle: **9.0% worst case**, under
-Garmin's 10% always-on guidance. Any AOD change must be re-measured against that
-ceiling - the hairline weight was tuned specifically to land there.
+Reference: `docs/screenshots/watch-face-v2-aod-reference.png`.
 
-The face must remain readable while respecting Garmin AMOLED low-power constraints and burn-in guidance.
+## Platform rules
 
-Test AOD with the Connect IQ Simulator screen heat-map / burn-in simulation before release.
+Primary target: **Forerunner 265, 416×416 AMOLED**.
 
-## Future layouts
+Implementation should still be structured so additional round AMOLED sizes can be added through resource overrides rather than a rewrite.
 
-After OFFSET is stable, two additional layouts may reuse the same font and graphic kit.
+Do not hard-code the product around one pixel layout if a relative/normalized anchor can solve it cleanly.
 
-### BLOCK
-
-Time is integrated into large STACK-shaped containers. More structured and geometric than OFFSET.
-
-### POSTER
-
-Time becomes nearly full-face editorial typography with tiny utility data pushed into leftover negative space.
-
-These are later variants, not parallel v1 implementation work.
-
-## Explicit non-goals
-
-For v1, do **not** add:
+## Explicit non-goals for v1
 
 - STACK backend connectivity
 - Build/tower visualization
-- race countdown
 - training-plan status
-- readiness/recovery dashboard
-- weekly mileage dashboard
-- heart-rate-zone visualization
-- dense configurable complication grids
+- race countdown
+- HR-zone ring on the everyday watch face
+- six-plus complication dashboard
+- continuous character animation
+- gradients/effects that require expensive per-frame rendering
 
-Those features may be useful elsewhere in the Garmin project, particularly the run field, but they do not improve the core watch-face concept.
+## Acceptance criteria
 
-## v1 acceptance criteria
+The v2 face succeeds when:
 
-The v1 face is successful when:
-
-- it is immediately recognizable as a designed STACK object
-- time is readable at a glance
-- it does not resemble a stock Garmin data dashboard
-- the OFFSET composition works on the Forerunner 265 416×416 round AMOLED display
-- all critical content respects the project round-screen safe area
-- current STACK colors replace the legacy Garmin palette
-- the tower is removed
-- StackDigits owns the main time
-- two-digit hours remain visually balanced across the full day
-- weather feels like an intentional utility object, and clearly secondary
-- secondary data renders through the slot model, not one-off functions
-- high-power and low-power states both feel intentional
-- steady-state memory leaves meaningful headroom under the 128 KiB watch-face limit
-- no STACK account or network connection is required
-
-## Status
-
-OFFSET matches the reference artwork in the simulator, the numerals render as
-finished type with no visible construction, always-on preserves the OFFSET
-composition at 9.0% lit pixels, and secondary data runs through the slot model.
-Steady state is 14.9 kB of 123.9 kB.
-
-## Immediate next milestone
-
-1. confirm cached weather behaviour on-device, not just in the simulator
-2. re-check the AOD lit-pixel budget with Garmin's heat map on hardware
-3. then consider accent-color settings or alternate layouts
+- Skomelr Quantum is visibly the actual chosen font
+- Trainer Boi is the actual STACK artwork
+- the ring visibly communicates step-goal progress
+- hour/minute/colon colors are configurable
+- time remains readable at a glance
+- the face feels fun and STACK-specific without a STACK wordmark
+- the active state is colorful without becoming random
+- AOD is intentional and power-safe
+- Forerunner 265 simulator validation passes without clipping
