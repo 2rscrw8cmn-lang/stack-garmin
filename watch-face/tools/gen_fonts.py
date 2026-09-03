@@ -87,11 +87,17 @@ def generate_font(spec, size, outdir):
     for g in glyphs:
         if not g["w"] or not g["h"]:
             continue
-        cell = Image.new("L", (g["w"], g["h"]), 0)
-        ImageDraw.Draw(cell).text((-g["l"], -g["t"]), g["ch"], font=font, fill=255)
+        # Pillow rank filters replicate the border, so a tight cell is never
+        # eroded where the ink touches its own bbox and the subtraction drops
+        # that part of the stroke. Erode inside a transparent margin instead,
+        # then crop back so glyph metrics stay exactly as measured.
+        pad = outline
+        cell = Image.new("L", (g["w"] + pad * 2, g["h"] + pad * 2), 0)
+        ImageDraw.Draw(cell).text((-g["l"] + pad, -g["t"] + pad), g["ch"], font=font, fill=255)
         if outline > 0:
             inner = cell.filter(ImageFilter.MinFilter(outline * 2 + 1))
             cell = ImageChops.subtract(cell, inner)
+            cell = cell.crop((pad, pad, pad + g["w"], pad + g["h"]))
         white = Image.new("RGBA", (g["w"], g["h"]), (255, 255, 255, 0))
         white.putalpha(cell)
         atlas.alpha_composite(white, (g["x"], g["y"]))
