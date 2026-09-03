@@ -39,8 +39,6 @@ class StackWatchFaceView extends WatchUi.WatchFace {
     var _trainerColor;
     var _trainerMono;
 
-    var _hourColor = 0;
-    var _minuteColor = 5;
     var _ringSource = RING_STEPS;
     var _weeklyRunGoal = 20;
     var _metricColorMode = 0;
@@ -113,8 +111,6 @@ class StackWatchFaceView extends WatchUi.WatchFace {
     function loadSettings() {
         try {
             if (Application has :Properties) {
-                _hourColor = numberSetting("HourColor", _hourColor);
-                _minuteColor = numberSetting("MinuteColor", _minuteColor);
                 _ringSource = numberSetting("RingSource", _ringSource);
                 _weeklyRunGoal = numberSetting("WeeklyRunGoal", _weeklyRunGoal);
                 _metricColorMode = numberSetting("MetricColorMode", _metricColorMode);
@@ -272,9 +268,13 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         }
     }
 
+    //! One Y for both compositions. AOD used to sit 16px higher, so the date
+    //! and battery visibly jumped the moment the face went always-on. The
+    //! battery glyph still drops out in AOD - that is a lit-pixel choice, and
+    //! it costs no movement.
     function drawTopUtility(dc, dx, dy, aod) {
         var color = aod ? StackTheme.AOD : StackTheme.TEXT;
-        var y = px(aod ? 70 : 86) + dy;
+        var y = px(86) + dy;
         dc.setColor(color, Gfx.COLOR_TRANSPARENT);
         dc.drawText(px(108) + dx, y, _utilityFont, dateLabel(), Gfx.TEXT_JUSTIFY_LEFT | Gfx.TEXT_JUSTIFY_VCENTER);
         dc.drawText(px(284) + dx, y, _utilityFont, StackMetrics.batteryPercent().toString() + "%",

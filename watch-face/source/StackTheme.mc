@@ -26,7 +26,6 @@ module StackTheme {
 
     // The AOD reference uses one subdued neutral throughout.
     const AOD = 0xA4A8AB;
-    const AOD_FAINT = 0x34383A;
 
     function palette(index) {
         if (index == 1) { return BRIGHT_BLUE; }
