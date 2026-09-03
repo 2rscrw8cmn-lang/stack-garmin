@@ -149,10 +149,31 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         WatchUi.requestUpdate();
     }
 
+    //! AMOLED products report panel state separately from watch-face sleep.
+    //! onEnterSleep fires while the panel is powering down too, so keying the
+    //! composition off _sleeping alone painted the always-on face for a moment
+    //! before the system blanked the screen - the AOD flash. DISPLAY_MODE_OFF
+    //! means draw nothing at all.
+    function displayOff() {
+        if (Sys has :getDisplayMode) {
+            return Sys.getDisplayMode() == Sys.DISPLAY_MODE_OFF;
+        }
+        return false;
+    }
+
+    function lowPower() {
+        if (Sys has :getDisplayMode) {
+            return Sys.getDisplayMode() == Sys.DISPLAY_MODE_LOW_POWER;
+        }
+        return _sleeping;
+    }
+
     function onUpdate(dc) {
         if (dc has :setAntiAlias) { dc.setAntiAlias(true); }
         dc.setColor(StackTheme.BG, StackTheme.BG);
         dc.clear();
+
+        if (displayOff()) { return; }
 
         StackMetrics.beginFrame();
         var clock = Sys.getClockTime();
@@ -165,8 +186,8 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         var hourText = twoDigits(displayHour(hour));
         var minuteText = twoDigits(minute);
 
-        if (_sleeping || PIN_SLEEP) {
-            drawAlwaysOn(dc, hourText, minuteText, hour, minute);
+        if (lowPower() || PIN_SLEEP) {
+            drawAlwaysOn(dc, hourText, minuteText, minute);
         } else {
             drawActive(dc, hourText, minuteText);
         }
@@ -181,40 +202,34 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         drawMetrics(dc);
     }
 
-    //! AOD is intentionally a separate reduced composition: time plus quiet
-    //! date/battery only, with no ring, metrics, or Trainer Boi bitmap.
-    function drawAlwaysOn(dc, hourText, minuteText, hour, minute) {
-        var phase = ((hour * 60 + minute) / 5) % 8;
+    //! AOD carries the same time treatment as the active face - outlined hours,
+    //! filled minutes, same fonts, same size, same Y - plus the grayscale
+    //! runner, dropping only the masonry, ring and metrics. The composition
+    //! measures about 5.7% luminance, inside the AMOLED always-on budget, and
+    //! the per-minute shift keeps any one pixel from staying lit.
+    function drawAlwaysOn(dc, hourText, minuteText, minute) {
+        var phase = minute % 8;
         var dx = burnInX(phase);
         var dy = burnInY(phase);
         drawTopUtility(dc, dx, dy, true);
-        drawHeroTime(dc, hourText, minuteText, px(88) + dy, StackTheme.AOD, StackTheme.AOD);
-        dc.setColor(StackTheme.AOD_FAINT, StackTheme.BG);
-        dc.fillRectangle((_width / 2) - px(2) + dx, px(327) + dy, px(4), px(4));
-        dc.fillRectangle((_width / 2) - px(46) + dx, px(366) + dy, px(92), px(2));
-    }
-
-    function drawHeroTime(dc, hourText, minuteText, y, hourColor, minuteColor) {
-        var hourWidth = dc.getTextWidthInPixels(hourText, _timeFont);
-        var minuteWidth = dc.getTextWidthInPixels(minuteText, _timeFont);
-        var total = hourWidth + minuteWidth;
-        var x = ((_width - total) / 2).toNumber();
-
-        dc.setColor(hourColor, Gfx.COLOR_TRANSPARENT);
-        dc.drawText(x, y, _timeFont, hourText, Gfx.TEXT_JUSTIFY_LEFT);
-        x += hourWidth;
-        dc.setColor(minuteColor, Gfx.COLOR_TRANSPARENT);
-        dc.drawText(x, y, _timeFont, minuteText, Gfx.TEXT_JUSTIFY_LEFT);
+        drawHeroTime(dc, hourText, minuteText, dx, dy);
+        drawTrainerBoiBitmap(dc, _trainerMono, dx, dy);
     }
 
     //! Active Hero Time uses filled and outline-only atlases generated from the
     //! same licensed Skomelr source. The outline interior stays transparent so
-    //! the masonry field remains the actual background behind the hour.
+    //! the masonry field remains the actual background behind the hour. AOD
+    //! shares this function so the two can never drift apart; dx/dy are the
+    //! always-on burn-in shift and are zero on the active face.
     function drawActiveHeroTime(dc, hourText, minuteText) {
+        drawHeroTime(dc, hourText, minuteText, 0, 0);
+    }
+
+    function drawHeroTime(dc, hourText, minuteText, dx, dy) {
         var hourWidth = dc.getTextWidthInPixels(hourText, _heroOutlineFont);
         var minuteWidth = dc.getTextWidthInPixels(minuteText, _heroTimeFont);
-        var x = ((_width - hourWidth - minuteWidth) / 2).toNumber();
-        var y = px(100);
+        var x = ((_width - hourWidth - minuteWidth) / 2).toNumber() + dx;
+        var y = px(100) + dy;
 
         dc.setColor(StackTheme.TEXT, Gfx.COLOR_TRANSPARENT);
         dc.drawText(x, y, _heroOutlineFont, hourText, Gfx.TEXT_JUSTIFY_LEFT);
@@ -318,11 +333,16 @@ class StackWatchFaceView extends WatchUi.WatchFace {
     }
 
     function drawTrainerBoi(dc) {
+        drawTrainerBoiBitmap(dc, (_trainerMode == 1) ? _trainerMono : _trainerColor, 0, 0);
+    }
+
+    //! AOD always passes the grayscale artwork. "Off" still means off in both
+    //! compositions, so the setting keeps working the way it reads.
+    function drawTrainerBoiBitmap(dc, bitmap, dx, dy) {
         if (_trainerMode == 2) { return; }
-        var bitmap = (_trainerMode == 1) ? _trainerMono : _trainerColor;
         if (bitmap == null) { return; }
-        var x = ((_width - bitmap.getWidth()) / 2).toNumber();
-        dc.drawBitmap(x, px(194), bitmap);
+        var x = ((_width - bitmap.getWidth()) / 2).toNumber() + dx;
+        dc.drawBitmap(x, px(194) + dy, bitmap);
     }
 
     function drawMetrics(dc) {
