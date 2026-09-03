@@ -319,7 +319,7 @@ module StackMetrics {
         else if (metric == SUNSET) { drawSunIcon(dc, x, cy, h, false); }
         else if (metric == VO2_MAX) { drawLungsIcon(dc, x, cy, h); }
         else if (metric == RECOVERY) { drawRecoveryIcon(dc, x, cy, h); }
-        else if (metric == WEEKLY_RUN_DISTANCE) { drawRunIcon(dc, x, cy, h); }
+        else if (metric == WEEKLY_RUN_DISTANCE) { drawRunIcon(dc, x, cy, h, color); }
         else if (metric == STRESS) { drawStressIcon(dc, x, cy, h); }
     }
 
@@ -392,13 +392,13 @@ module StackMetrics {
             || condition == Weather.CONDITION_MOSTLY_CLOUDY;
 
         if (!cloudy) {
+            // Solid wedges rather than 2px rays, which disappeared next to the
+            // filled icons and were invisible at 18px.
             dc.fillCircle(x, cy, h / 4);
-            dc.setPenWidth(2);
-            dc.drawLine(x, cy - h / 2, x, cy - h / 3);
-            dc.drawLine(x, cy + h / 3, x, cy + h / 2);
-            dc.drawLine(x - h / 2, cy, x - h / 3, cy);
-            dc.drawLine(x + h / 3, cy, x + h / 2, cy);
-            dc.setPenWidth(1);
+            dc.fillPolygon([[x, cy - h / 2], [x - h / 8, cy - h / 3], [x + h / 8, cy - h / 3]]);
+            dc.fillPolygon([[x, cy + h / 2], [x - h / 8, cy + h / 3], [x + h / 8, cy + h / 3]]);
+            dc.fillPolygon([[x - h / 2, cy], [x - h / 3, cy - h / 8], [x - h / 3, cy + h / 8]]);
+            dc.fillPolygon([[x + h / 2, cy], [x + h / 3, cy - h / 8], [x + h / 3, cy + h / 8]]);
             return;
         }
 
@@ -406,10 +406,9 @@ module StackMetrics {
         dc.fillCircle(x + h / 6, cy - h / 8, h / 3);
         dc.fillRectangle(x - h / 2, cy, h, h / 4);
         if (rainy) {
-            dc.setPenWidth(2);
-            dc.drawLine(x - h / 4, cy + h / 3, x - h / 4, cy + h / 2);
-            dc.drawLine(x + h / 4, cy + h / 3, x + h / 4, cy + h / 2);
-            dc.setPenWidth(1);
+            var w = pen(h);
+            stroke(dc, x - h / 4, cy + h / 3, x - h / 4, cy + h / 2, w);
+            stroke(dc, x + h / 4, cy + h / 3, x + h / 4, cy + h / 2, w);
         }
     }
 
@@ -433,13 +432,20 @@ module StackMetrics {
         dc.fillPolygon([[left + cap, bottom - cap], [right - cap, bottom - cap], [x, cy]]);
     }
 
-    function drawRunIcon(dc, x, cy, h) {
-        var w = pen(h);
-        dc.fillCircle(x + h / 5, cy - h / 3, h / 6);
-        stroke(dc, x, cy - h / 6, x + h / 5, cy, w);
-        stroke(dc, x, cy - h / 6, x - h / 3, cy, w);
-        stroke(dc, x + h / 5, cy, x + h / 2, cy + h / 3, w);
-        stroke(dc, x + h / 5, cy, x - h / 5, cy + h / 2, w);
+    //! Weekly running distance. A runner here fought with the Trainer Boi
+    //! bitmap directly above it and never resolved into anything legible at
+    //! the 18px the face draws icons at. A calendar says "this week" plainly
+    //! and shares no silhouette with the rest of the set.
+    function drawRunIcon(dc, x, cy, h, color) {
+        var tab = pen(h);
+        var left = x - h / 2;
+        var top = cy - h / 3;
+        dc.fillRectangle(x - h / 4 - tab / 2, cy - h / 2, tab, h / 4);
+        dc.fillRectangle(x + h / 4 - tab / 2, cy - h / 2, tab, h / 4);
+        dc.fillRoundedRectangle(left, top, h, cy + h / 2 - top, 3);
+        dc.setColor(StackTheme.BG, StackTheme.BG);
+        dc.fillRectangle(left + tab, top + h / 5, h - tab * 2, tab);
+        dc.setColor(color, StackTheme.BG);
     }
 
     function drawStressIcon(dc, x, cy, h) {
