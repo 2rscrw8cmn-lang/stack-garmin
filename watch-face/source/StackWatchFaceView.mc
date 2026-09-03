@@ -178,7 +178,6 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         drawTopUtility(dc, 0, 0, false);
         drawActiveHeroTime(dc, hourText, minuteText);
         drawTrainerBoi(dc);
-        drawMetricShelf(dc);
         drawMetrics(dc);
     }
 
@@ -324,28 +323,6 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         if (bitmap == null) { return; }
         var x = ((_width - bitmap.getWidth()) / 2).toNumber();
         dc.drawBitmap(x, px(194), bitmap);
-    }
-
-    function drawMetricShelf(dc) {
-        var y = px(301);
-        var left = px(82);
-        var right = px(334);
-        dc.setPenWidth(px(4));
-        dc.setColor(StackTheme.EMPTY, StackTheme.BG);
-        dc.drawLine(left, y, right, y);
-        dc.setColor(metricColor(0, _metric1), StackTheme.BG);
-        dc.drawLine(px(METRIC_LEFT_X - 12), y, px(METRIC_LEFT_X + 12), y);
-        dc.setColor(metricColor(1, _metric2), StackTheme.BG);
-        dc.drawLine(px(METRIC_CENTER_X - 12), y, px(METRIC_CENTER_X + 12), y);
-        dc.setColor(metricColor(2, _metric3), StackTheme.BG);
-        dc.drawLine(px(METRIC_RIGHT_X - 12), y, px(METRIC_RIGHT_X + 12), y);
-        dc.setPenWidth(1);
-
-        dc.setColor(StackTheme.EMPTY, StackTheme.BG);
-        for (var i = 0; i < 4; i++) {
-            dc.fillRectangle(px(160), px(319 + i * 13), px(4), px(8));
-            dc.fillRectangle(px(253), px(319 + i * 13), px(4), px(8));
-        }
     }
 
     function drawMetrics(dc) {
