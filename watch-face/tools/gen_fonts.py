@@ -20,7 +20,7 @@ FONTS = [
     {"name": "stack_time", "size": 94, "chars": DIGITS + ":"},
     {"name": "stack_time_hero", "size": 104, "chars": DIGITS},
     {"name": "stack_time_outline", "size": 104, "chars": DIGITS, "outline": 2},
-    {"name": "stack_metric", "size": 32, "chars": DIGITS + ".%-"},
+    {"name": "stack_metric", "size": 32, "chars": DIGITS + ".%-:K"},
 ]
 
 # Start with the primary fr265 panel and prepare the common round AMOLED sizes we

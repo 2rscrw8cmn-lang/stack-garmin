@@ -2,6 +2,7 @@ using Toybox.Activity;
 using Toybox.ActivityMonitor;
 using Toybox.Complications;
 using Toybox.Graphics as Gfx;
+using Toybox.Math;
 using Toybox.SensorHistory;
 using Toybox.System as Sys;
 using Toybox.Time;
@@ -102,12 +103,6 @@ module StackMetrics {
         if (metric == WEEKLY_RUN_DISTANCE) { return "WK"; }
         if (metric == STRESS) { return "STR"; }
         return "";
-    }
-
-    //! Sunrise/sunset and abbreviated step values contain glyphs outside the
-    //! intentionally tiny StackMetric atlas and use the utility font instead.
-    function usesStackFont(metric) {
-        return metric != STEPS && metric != SUNRISE && metric != SUNSET;
     }
 
     function batteryPercent() {
@@ -320,7 +315,8 @@ module StackMetrics {
         else if (metric == BATTERY) { drawBatteryIcon(dc, x, cy, h, color); }
         else if (metric == TEMPERATURE) { drawWeatherIcon(dc, x, cy, h); }
         else if (metric == NOTIFICATIONS) { drawMessageIcon(dc, x, cy, h); }
-        else if (metric == SUNRISE || metric == SUNSET) { drawHorizonIcon(dc, x, cy, h); }
+        else if (metric == SUNRISE) { drawSunIcon(dc, x, cy, h, true); }
+        else if (metric == SUNSET) { drawSunIcon(dc, x, cy, h, false); }
         else if (metric == VO2_MAX) { drawLungsIcon(dc, x, cy, h); }
         else if (metric == RECOVERY) { drawRecoveryIcon(dc, x, cy, h); }
         else if (metric == WEEKLY_RUN_DISTANCE) { drawRunIcon(dc, x, cy, h); }
@@ -338,10 +334,12 @@ module StackMetrics {
     }
 
     function drawStepsIcon(dc, x, cy, h) {
-        var s = h / 3;
-        dc.fillRectangle(x - s, cy, s, s);
-        dc.fillRectangle(x, cy - s, s, s);
-        dc.fillRectangle(x, cy, s, s);
+        var w = h / 3;
+        var left = x - h / 2;
+        var bottom = cy + h / 2;
+        dc.fillRectangle(left, bottom - w, w, w);
+        dc.fillRectangle(left + w, bottom - w * 2, w, w * 2);
+        dc.fillRectangle(left + w * 2, bottom - w * 3, w, w * 3);
     }
 
     function drawHeartIcon(dc, x, cy, h) {
@@ -416,38 +414,42 @@ module StackMetrics {
     }
 
     function drawLungsIcon(dc, x, cy, h) {
-        var r = h / 4;
-        dc.fillCircle(x - r, cy, r);
-        dc.fillCircle(x + r, cy, r);
-        dc.fillRectangle(x - 1, cy - h / 2, 3, h / 2);
+        var stem = pen(h);
+        var lobe = h / 2 - stem;
+        dc.fillRectangle(x - stem / 2, cy - h / 2, stem, h / 3);
+        dc.fillRoundedRectangle(x - h / 2, cy - h / 6, lobe, h * 2 / 3, 3);
+        dc.fillRoundedRectangle(x + stem, cy - h / 6, lobe, h * 2 / 3, 3);
     }
 
     function drawRecoveryIcon(dc, x, cy, h) {
-        var r = h / 2;
-        dc.setPenWidth(2);
-        dc.drawCircle(x, cy, r);
-        dc.drawLine(x, cy, x, cy - h / 4);
-        dc.drawLine(x, cy, x + h / 4, cy);
-        dc.setPenWidth(1);
+        var cap = pen(h);
+        var top = cy - h / 2;
+        var bottom = cy + h / 2;
+        var left = x - h / 2;
+        var right = x + h / 2;
+        dc.fillRectangle(left, top, h, cap);
+        dc.fillRectangle(left, bottom - cap, h, cap);
+        dc.fillPolygon([[left + cap, top + cap], [right - cap, top + cap], [x, cy]]);
+        dc.fillPolygon([[left + cap, bottom - cap], [right - cap, bottom - cap], [x, cy]]);
     }
 
     function drawRunIcon(dc, x, cy, h) {
+        var w = pen(h);
         dc.fillCircle(x + h / 5, cy - h / 3, h / 6);
-        dc.setPenWidth(3);
-        dc.drawLine(x, cy - h / 6, x + h / 5, cy);
-        dc.drawLine(x, cy - h / 6, x - h / 3, cy);
-        dc.drawLine(x + h / 5, cy, x + h / 2, cy + h / 3);
-        dc.drawLine(x + h / 5, cy, x - h / 5, cy + h / 2);
-        dc.setPenWidth(1);
+        stroke(dc, x, cy - h / 6, x + h / 5, cy, w);
+        stroke(dc, x, cy - h / 6, x - h / 3, cy, w);
+        stroke(dc, x + h / 5, cy, x + h / 2, cy + h / 3, w);
+        stroke(dc, x + h / 5, cy, x - h / 5, cy + h / 2, w);
     }
 
     function drawStressIcon(dc, x, cy, h) {
-        dc.setPenWidth(2);
-        dc.drawLine(x - h / 2, cy - h / 4, x - h / 4, cy + h / 4);
-        dc.drawLine(x - h / 4, cy + h / 4, x, cy - h / 4);
-        dc.drawLine(x, cy - h / 4, x + h / 4, cy + h / 4);
-        dc.drawLine(x + h / 4, cy + h / 4, x + h / 2, cy - h / 4);
-        dc.setPenWidth(1);
+        var w = pen(h);
+        var lo = cy + h / 4;
+        var hi = cy - h / 4;
+        stroke(dc, x - h / 2, hi, x - h / 4, lo, w);
+        stroke(dc, x - h / 4, lo, x, hi, w);
+        stroke(dc, x, hi, x + h / 4, lo, w);
+        stroke(dc, x + h / 4, lo, x + h / 2, hi, w);
     }
 
     function weatherInfo() {
@@ -463,8 +465,37 @@ module StackMetrics {
         dc.fillPolygon([[x - h / 4, cy + h / 4], [x, cy + h / 4], [x - h / 4, cy + h / 2]]);
     }
 
-    function drawHorizonIcon(dc, x, cy, h) {
-        dc.fillCircle(x, cy, h / 3);
-        dc.fillRectangle(x - h / 2, cy + h / 5, h, 3);
+    //! Sunrise puts the sun above the horizon, sunset below it - mirror images
+    //! of each other. These used to draw the same glyph and were impossible to
+    //! tell apart. A chevron was tried first, but at the 18px the face draws
+    //! these it merged with the disc into something that read as the hourglass.
+    function drawSunIcon(dc, x, cy, h, rising) {
+        var bar = rising ? (cy + h / 3) : (cy - h / 3 - pen(h));
+        dc.fillCircle(x, rising ? (cy - h / 6) : (cy + h / 6), h / 4);
+        dc.fillRectangle(x - h / 2, bar, h, pen(h));
+    }
+
+    //! Icon stroke weight, scaled so thin marks keep pace with the solid ones
+    //! at the 18px the watch face actually draws them at.
+    function pen(h) {
+        var w = h / 6;
+        return (w < 2) ? 2 : w;
+    }
+
+    //! A filled quad standing in for a thick line, so linear icons are solid
+    //! shapes rather than hairlines. Round caps keep the joints from notching.
+    function stroke(dc, x1, y1, x2, y2, w) {
+        var dx = x2 - x1;
+        var dy = y2 - y1;
+        var len = Math.sqrt(dx * dx + dy * dy);
+        if (len < 1) { return; }
+        var nx = -dy * w / (2.0 * len);
+        var ny = dx * w / (2.0 * len);
+        dc.fillPolygon([
+            [x1 + nx, y1 + ny], [x2 + nx, y2 + ny],
+            [x2 - nx, y2 - ny], [x1 - nx, y1 - ny]
+        ]);
+        dc.fillCircle(x1, y1, w / 2);
+        dc.fillCircle(x2, y2, w / 2);
     }
 }

@@ -36,7 +36,6 @@ class StackWatchFaceView extends WatchUi.WatchFace {
     var _heroOutlineFont;
     var _metricFont;
     var _utilityFont;
-    var _metricFallbackFont;
     var _trainerColor;
     var _trainerMono;
 
@@ -91,14 +90,12 @@ class StackWatchFaceView extends WatchUi.WatchFace {
                 _metricFont = Gfx.getVectorFont({ :face => ["RobotoCondensedBold", "RobotoRegular"], :size => px(32) });
             }
             _utilityFont = Gfx.getVectorFont({ :face => ["RobotoCondensedBold", "RobotoRegular"], :size => px(26) });
-            _metricFallbackFont = Gfx.getVectorFont({ :face => ["RobotoCondensedBold", "RobotoRegular"], :size => px(26) });
         }
         if (_timeFont == null) { _timeFont = Gfx.FONT_NUMBER_MILD; }
         if (_heroTimeFont == null) { _heroTimeFont = _timeFont; }
         if (_heroOutlineFont == null) { _heroOutlineFont = _heroTimeFont; }
         if (_metricFont == null) { _metricFont = Gfx.FONT_SMALL; }
         if (_utilityFont == null) { _utilityFont = Gfx.FONT_XTINY; }
-        if (_metricFallbackFont == null) { _metricFallbackFont = Gfx.FONT_XTINY; }
 
         try {
             _trainerColor = WatchUi.loadResource(Rez.Drawables.TrainerBoiColor);
@@ -357,9 +354,8 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         StackMetrics.drawIcon(dc, metric, x, px(312), px(18), color);
 
         var value = StackMetrics.value(metric);
-        var font = StackMetrics.usesStackFont(metric) ? _metricFont : _metricFallbackFont;
         dc.setColor(color, Gfx.COLOR_TRANSPARENT);
-        dc.drawText(x, px(316), font, value, Gfx.TEXT_JUSTIFY_CENTER);
+        dc.drawText(x, px(316), _metricFont, value, Gfx.TEXT_JUSTIFY_CENTER);
     }
 
     function metricColor(slot, metric) {
