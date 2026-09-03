@@ -19,7 +19,7 @@ DIGITS = "0123456789"
 FONTS = [
     {"name": "stack_time", "size": 94, "chars": DIGITS + ":"},
     {"name": "stack_time_hero", "size": 104, "chars": DIGITS},
-    {"name": "stack_time_outline", "size": 104, "chars": DIGITS, "outline": 3},
+    {"name": "stack_time_outline", "size": 104, "chars": DIGITS, "outline": 2},
     {"name": "stack_metric", "size": 32, "chars": DIGITS + ".%-"},
 ]
 
