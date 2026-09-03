@@ -7,7 +7,7 @@
 - [x] Lock Skomelr Quantum as the display numeral direction
 - [x] Lock actual full-color Trainer Boi as the central brand element
 - [x] Define outer segmented ring as daily step-goal progress
-- [x] Define user-selectable hour / minute / colon colors
+- [x] Define outlined-hour / filled-minute white Hero Time treatment
 - [x] Define three lower metric slots
 - [x] Define separate AOD composition
 - [x] Add active + AOD reference mockups

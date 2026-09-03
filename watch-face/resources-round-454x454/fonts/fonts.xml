@@ -1,6 +1,8 @@
 <resources>
     <fonts>
         <font id="StackTime" filename="stack_time.fnt" antialias="true" />
+        <font id="StackTimeHero" filename="stack_time_hero.fnt" antialias="true" />
+        <font id="StackTimeOutline" filename="stack_time_outline.fnt" antialias="true" />
         <font id="StackMetric" filename="stack_metric.fnt" antialias="true" />
     </fonts>
 </resources>

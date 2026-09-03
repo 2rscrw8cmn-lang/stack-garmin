@@ -28,15 +28,12 @@ Use **Skomelr Quantum** for the main time.
 
 Required behavior:
 
-- hour, colon, and minute are separate draw objects
-- each can be assigned a different user-selectable color
-- default active palette:
-  - hour: STACK cyan/teal
-  - colon: STACK yellow
-  - minute: STACK red-orange
-- monochrome and single-color modes are also supported
+- render a fixed-width four-digit time with a leading zero in 12-hour mode
+- omit the colon
+- render the hour as a white outline and the minute as filled white glyphs
+- allow the dark masonry background to remain visible through the hour outline
 - respect the device 12/24-hour preference
-- keep the time centered optically even though each color group is drawn separately
+- keep the measured hour + minute composite optically centered
 
 The font must come from generated Garmin bitmap-font resources, not hand-built polygon digits.
 
@@ -51,7 +48,7 @@ Source:
 Default active treatment:
 
 - full color
-- centered beneath the hero time
+- centered in front of the lower portion of the hero time
 - approximately 72–90 px high on the 416×416 target, tuned in simulator
 - no label and no surrounding card
 
@@ -69,15 +66,17 @@ See `TRAINER_BOI_INTEGRATION.md`.
 
 The outer ring is **not decoration**.
 
-Canonical meaning: **daily steps as a percentage of the Garmin step goal**.
+Default meaning: **daily steps as a percentage of the Garmin step goal**.
+
+The user may instead select weekly intensity minutes, weekly running distance,
+Body Battery, or turn the ring off.
 
 Behavior:
 
 - segmented rather than a continuous gauge
 - empty segments remain dark charcoal
 - filled segments progress around the upper/side perimeter
-- multicolor STACK mode is the default
-- optional single-color mode uses the user's ring color setting
+- filled segments move through a dark-to-bright STACK green progression
 - keep a visual break at the bottom so the ring does not box in the metrics
 
 Do not use the ring for heart-rate zones on the everyday watch face.
@@ -105,7 +104,13 @@ Recommended available metrics:
 - notification count
 - sunrise / sunset
 
-Keep metric labels abbreviated (`MI`, `HR`, `BB`) or use simple graphic marks. Avoid Garmin-style dense dashboard labels.
+Use simple graphic marks without unit labels. The default slots use cyan,
+red-orange, and purple for both icon and value.
+
+## Background
+
+The active face uses deterministic staggered near-black masonry blocks across the
+inner circle. The blocks remain subordinate to the foreground and are omitted from AOD.
 
 ## Top utility row
 
@@ -138,14 +143,8 @@ Do not substitute an unrelated generic neon palette.
 
 ### User color settings
 
-Expose a curated STACK palette for:
-
-- hour color
-- minute color
-- colon color
-- ring mode: multicolor / single color
-- ring single color
-- metric color mode: automatic / match time / individual
+Expose a curated STACK palette for metric color mode and individual metric colors.
+The active time is intentionally fixed to white; the ring uses its green progression.
 
 Unlimited RGB input is not required for v1.
 
@@ -153,9 +152,9 @@ Unlimited RGB input is not required for v1.
 
 The active state may use:
 
-- full-color hero time
+- outlined/filled white hero time
 - full-color Trainer Boi
-- multicolor step-progress ring
+- green-gradient progress ring
 - all three lower metrics
 - top utility row
 
@@ -202,8 +201,8 @@ The v2 face succeeds when:
 
 - Skomelr Quantum is visibly the actual chosen font
 - Trainer Boi is the actual STACK artwork
-- the ring visibly communicates step-goal progress
-- hour/minute/colon colors are configurable
+- the ring visibly communicates its selected progress source
+- outlined hours and filled minutes remain legible over the masonry background
 - time remains readable at a glance
 - the face feels fun and STACK-specific without a STACK wordmark
 - the active state is colorful without becoming random

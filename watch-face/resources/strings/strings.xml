@@ -5,6 +5,13 @@
   <string id="ColonColorTitle">Colon color</string>
   <string id="RingModeTitle">Step ring mode</string>
   <string id="RingColorTitle">Single ring color</string>
+  <string id="RingSourceTitle">Progress ring</string>
+  <string id="RingSourceSteps">Daily steps</string>
+  <string id="RingSourceIntensity">Weekly intensity minutes</string>
+  <string id="RingSourceWeeklyRun">Weekly running distance</string>
+  <string id="RingSourceBodyBattery">Body Battery</string>
+  <string id="RingSourceOff">Off</string>
+  <string id="WeeklyRunGoalTitle">Weekly running goal (watch units)</string>
   <string id="MetricColorModeTitle">Metric color mode</string>
   <string id="Metric1ColorTitle">Left metric color</string>
   <string id="Metric2ColorTitle">Center metric color</string>
@@ -25,8 +32,8 @@
   <string id="ColorWhite">Off-white</string>
   <string id="RingMulticolor">STACK multicolor</string>
   <string id="RingSingle">Single color</string>
-  <string id="MetricAutomatic">Automatic</string>
-  <string id="MetricMatchTime">Match time</string>
+  <string id="MetricAutomatic">STACK colors</string>
+  <string id="MetricMatchTime">White</string>
   <string id="MetricIndividual">Individual</string>
   <string id="TrainerFullColor">Full color</string>
   <string id="TrainerMono">Mono</string>
@@ -37,8 +44,12 @@
   <string id="MetricHeartRate">Heart rate</string>
   <string id="MetricBodyBattery">Body Battery</string>
   <string id="MetricBattery">Battery</string>
-  <string id="MetricTemperature">Temperature</string>
+  <string id="MetricTemperature">Weather</string>
   <string id="MetricNotifications">Notifications</string>
   <string id="MetricSunrise">Sunrise</string>
   <string id="MetricSunset">Sunset</string>
+  <string id="MetricVo2Max">Running VO2 max</string>
+  <string id="MetricRecovery">Recovery time</string>
+  <string id="MetricWeeklyRun">Weekly running distance</string>
+  <string id="MetricStress">Stress</string>
 </strings>

@@ -134,19 +134,21 @@ The generator creates tintable AngelCode BMFont `.fnt` + PNG atlases for the sup
 
 For the Forerunner 265 resource set:
 
-- `StackTime` uses Skomelr Quantum at approximately 94 px and contains `0123456789:`
+- `StackTime` uses Skomelr Quantum at approximately 94 px and contains `0123456789:` for AOD compatibility
+- `StackTimeHero` uses approximately 104 px filled glyphs for active minutes
+- `StackTimeOutline` uses approximately 104 px transparent-interior outline glyphs for active hours
 - `StackMetric` uses Skomelr Quantum at approximately 32 px and contains `0123456789.%-`
 - utility text uses Garmin system vector fonts where available
 
 The raw OTF/TTF source remains gitignored. Generated Garmin bitmap resources are committed.
 
-The hero time is measured and rendered as three independent strings:
+The active hero time is measured and rendered as two independent strings:
 
-- hour
-- colon
-- minute
+- outlined hour
+- filled minute
 
-This allows independent color settings without duplicating font resources.
+Both are fixed to off-white and omit the colon. The separate outline atlas allows
+the active masonry background to remain visible inside the hour glyphs.
 
 Custom font text is drawn with a transparent background so glyph bounds do not punch black rectangles through the step ring or other underlying geometry.
 
@@ -156,7 +158,7 @@ Fallback behavior remains in the renderer for missing resources, but the committ
 
 For the 416 × 416 Forerunner 265 resource set:
 
-- Hero time bitmap source size: approximately 94 px
+- Hero time bitmap source sizes: approximately 104 px active / 94 px AOD
 - Metric bitmap source size: approximately 32 px
 - Utility vector font: approximately 15 px requested size
 - Metric fallback vector font: approximately 26 px requested size
@@ -199,11 +201,12 @@ The full expressive STACK face belongs in high-power mode after the wrist gestur
 
 Current Hero Time high-power composition includes:
 
-- multicolor Skomelr hero time
+- outlined/filled white Skomelr hero time
 - full-color Trainer Boi
 - segmented daily step-goal ring
 - day/date and battery row
 - three configurable lower metrics
+- a deterministic near-black masonry background
 - black AMOLED background
 
 Do not design anything that requires continuous animation.

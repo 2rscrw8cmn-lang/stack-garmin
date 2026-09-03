@@ -36,23 +36,22 @@ The generator is adapted from the MIT-licensed WinterTime-Watchface font pipelin
 Generated resources include:
 
 - `StackTime` — `0123456789:`
+- `StackTimeHero` — larger filled `0123456789` active-time glyphs
+- `StackTimeOutline` — transparent-interior outline glyphs generated from the same source
 - `StackMetric` — `0123456789.%-`
 
 The Forerunner 265 uses the 416×416 resource set.
 
-Because the generated glyphs are white alpha masks, Monkey C can call `dc.setColor()` before drawing the font. That supports:
+Because the generated glyphs are white alpha masks, Monkey C can call `dc.setColor()`
+before drawing the font. Active hero glyphs are fixed to off-white; metric glyphs
+remain tintable for the three-slot palette.
 
-- hour color
-- minute color
-- colon color
-- metric number colors
+## Hero treatment
 
-## Color settings
+The active face measures and centers two two-digit groups without a colon:
 
-Draw the hero time as three separately measured strings:
+- outlined white hour
+- filled white minute
 
-- hour
-- colon
-- minute
-
-Do not draw `HH:MM` as one string when user-selectable per-group colors are enabled.
+The outline atlas keeps its glyph interiors transparent so the masonry background
+remains visible through the hour. AOD continues to use the smaller filled atlas.

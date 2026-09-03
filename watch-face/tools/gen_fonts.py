@@ -8,7 +8,7 @@ The source Skomelr font is intentionally not committed. Put a properly licensed
 copy at watch-face/fonts-src/Skomelr Quantum.otf before running this script.
 """
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "fonts-src" / "Skomelr Quantum.otf"
@@ -18,6 +18,8 @@ DIGITS = "0123456789"
 
 FONTS = [
     {"name": "stack_time", "size": 94, "chars": DIGITS + ":"},
+    {"name": "stack_time_hero", "size": 104, "chars": DIGITS},
+    {"name": "stack_time_outline", "size": 104, "chars": DIGITS, "outline": 3},
     {"name": "stack_metric", "size": 32, "chars": DIGITS + ".%-"},
 ]
 
@@ -33,6 +35,8 @@ TARGETS = [
 FONTS_XML = """<resources>
     <fonts>
         <font id="StackTime" filename="stack_time.fnt" antialias="true" />
+        <font id="StackTimeHero" filename="stack_time_hero.fnt" antialias="true" />
+        <font id="StackTimeOutline" filename="stack_time_outline.fnt" antialias="true" />
         <font id="StackMetric" filename="stack_metric.fnt" antialias="true" />
     </fonts>
 </resources>
@@ -50,6 +54,7 @@ def generate_font(spec, size, outdir):
     font = ImageFont.truetype(str(SRC), size)
     ascent, descent = font.getmetrics()
     line_height = ascent + descent
+    outline = spec.get("outline", 0)
 
     glyphs = []
     for ch in spec["chars"]:
@@ -84,6 +89,9 @@ def generate_font(spec, size, outdir):
             continue
         cell = Image.new("L", (g["w"], g["h"]), 0)
         ImageDraw.Draw(cell).text((-g["l"], -g["t"]), g["ch"], font=font, fill=255)
+        if outline > 0:
+            inner = cell.filter(ImageFilter.MinFilter(outline * 2 + 1))
+            cell = ImageChops.subtract(cell, inner)
         white = Image.new("RGBA", (g["w"], g["h"]), (255, 255, 255, 0))
         white.putalpha(cell)
         atlas.alpha_composite(white, (g["x"], g["y"]))
