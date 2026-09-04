@@ -7,6 +7,15 @@ module StackTheme {
     const BLOCK_MID = 0x111515;
     const BLOCK_HIGH = 0x181E1E;
 
+    // Masonry blocks already earned against the step goal. The unlit texture
+    // above stays, so the dimmest lit tone has to clear BLOCK_HIGH decisively:
+    // it sits about 1.7x its relative luminance. BLOCK_FILL_EDGE marks the one
+    // most recently earned block.
+    const BLOCK_FILL_1 = 0x2A3336;
+    const BLOCK_FILL_2 = 0x354045;
+    const BLOCK_FILL_3 = 0x404E54;
+    const BLOCK_FILL_EDGE = 0x4E5F66;
+
     // Canonical colors sampled from trainer-boi-full-color.svg.
     const CYAN = 0x02BCC0;
     const BRIGHT_BLUE = 0x0CB9FC;

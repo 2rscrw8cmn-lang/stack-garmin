@@ -21,6 +21,19 @@ class StackWatchFaceView extends WatchUi.WatchFace {
     const RING_BODY_BATTERY = 3;
     const RING_OFF = 4;
 
+    // Masonry geometry. Class level because the block count and the draw pass
+    // both walk it, and the two must agree exactly or the step fill lands on
+    // the wrong blocks.
+    const MASONRY_ROWS = 15;
+    const MASONRY_WIDTHS = [52, 68, 44, 60];
+    const MASONRY_RADIUS = 181;
+    const MASONRY_TILE_H = 22;
+    const MASONRY_GAP = 3;
+    const MASONRY_ROW_PITCH = 25;
+    const MASONRY_TOP = 29;
+    const MASONRY_INSET = 4;
+    const MASONRY_MIN_W = 10;
+
     // Screenshot harness only. Keep disabled in commits.
     const PIN_TIME = -1;
     const PIN_STEPS = -1;
@@ -30,6 +43,11 @@ class StackWatchFaceView extends WatchUi.WatchFace {
     var _height = 416;
     var _scale = 1.0;
     var _sleeping = false;
+
+    // Bottom-up index of the first block in each masonry row, and the total.
+    // Measured once in onLayout - the geometry only depends on the panel.
+    var _rowBase;
+    var _blockTotal = 0;
 
     var _timeFont;
     var _heroTimeFont;
@@ -60,7 +78,53 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         _height = dc.getHeight();
         var shortSide = (_width < _height) ? _width : _height;
         _scale = shortSide.toFloat() / BASE_SIZE;
+        measureMasonry();
         loadResources();
+    }
+
+    //! Number the masonry blocks from the bottom row upward so the step fill
+    //! reads as courses being laid. The draw pass runs top-down, so each row
+    //! needs the running total of everything below it.
+    function measureMasonry() {
+        var counts = new [MASONRY_ROWS];
+        for (var row = 0; row < MASONRY_ROWS; row++) {
+            counts[row] = masonryRowCount(row);
+        }
+        _rowBase = new [MASONRY_ROWS];
+        var below = 0;
+        for (var row = MASONRY_ROWS - 1; row >= 0; row--) {
+            _rowBase[row] = below;
+            below += counts[row];
+        }
+        _blockTotal = below;
+    }
+
+    //! Left and right edge of one masonry row, or null where the row falls
+    //! outside the bezel. Shared by the count and the draw pass.
+    function masonryRowSpan(row) {
+        var radius = px(MASONRY_RADIUS);
+        var y = px(MASONRY_TOP + row * MASONRY_ROW_PITCH);
+        var dy = (y + px(MASONRY_TILE_H) / 2) - (_height / 2);
+        var inside = radius * radius - dy * dy;
+        if (inside <= 0) { return null; }
+        var half = Math.sqrt(inside).toNumber();
+        return [ _width / 2 - half + px(MASONRY_INSET), _width / 2 + half - px(MASONRY_INSET) ];
+    }
+
+    function masonryRowCount(row) {
+        var span = masonryRowSpan(row);
+        if (span == null) { return 0; }
+        var x = span[0];
+        var pattern = row % MASONRY_WIDTHS.size();
+        var count = 0;
+        while (x < span[1]) {
+            var w = px(MASONRY_WIDTHS[pattern]);
+            if (x + w > span[1]) { w = span[1] - x; }
+            if (w > px(MASONRY_MIN_W)) { count++; }
+            x += w + px(MASONRY_GAP);
+            pattern = (pattern + 1) % MASONRY_WIDTHS.size();
+        }
+        return count;
     }
 
     function loadResources() {
@@ -232,40 +296,58 @@ class StackWatchFaceView extends WatchUi.WatchFace {
     //! Low-contrast masonry built from deterministic STACK blocks. Keeping the
     //! pattern static avoids visual flicker and makes it inexpensive to redraw.
     function drawStackBackground(dc) {
-        var widths = [52, 68, 44, 60];
-        var radius = px(181);
-        var centerX = _width / 2;
-        var centerY = _height / 2;
-        var gap = px(3);
-        var tileH = px(22);
+        var tileH = px(MASONRY_TILE_H);
+        var gap = px(MASONRY_GAP);
+        var litCount = litBlockCount();
 
-        for (var row = 0; row < 15; row++) {
-            var y = px(29 + row * 25);
-            var midY = y + tileH / 2;
-            var dy = midY - centerY;
-            var inside = radius * radius - dy * dy;
-            if (inside <= 0) { continue; }
+        for (var row = 0; row < MASONRY_ROWS; row++) {
+            var span = masonryRowSpan(row);
+            if (span == null) { continue; }
 
-            var half = Math.sqrt(inside).toNumber();
-            var left = centerX - half + px(4);
-            var right = centerX + half - px(4);
-            var x = left;
-            var pattern = row % widths.size();
+            var y = px(MASONRY_TOP + row * MASONRY_ROW_PITCH);
+            var right = span[1];
+            var x = span[0];
+            var pattern = row % MASONRY_WIDTHS.size();
+            var seat = _rowBase[row];
 
             while (x < right) {
-                var w = px(widths[pattern]);
+                var w = px(MASONRY_WIDTHS[pattern]);
                 if (x + w > right) { w = right - x; }
-                if (w > px(10)) {
-                    var shade = (row + pattern) % 3;
-                    var blockColor = (shade == 0) ? StackTheme.BLOCK_LOW
-                        : ((shade == 1) ? StackTheme.BLOCK_MID : StackTheme.BLOCK_HIGH);
-                    dc.setColor(blockColor, StackTheme.BG);
+                if (w > px(MASONRY_MIN_W)) {
+                    dc.setColor(blockShade(seat, litCount, row, pattern), StackTheme.BG);
                     dc.fillRectangle(x, y, w, tileH);
+                    seat++;
                 }
                 x += w + gap;
-                pattern = (pattern + 1) % widths.size();
+                pattern = (pattern + 1) % MASONRY_WIDTHS.size();
             }
         }
+    }
+
+    //! How many blocks the day's steps have earned. stepFraction() already
+    //! reads the watch's own step goal and clamps at 1.0, which is also what
+    //! holds the wall at full once the goal is met.
+    function litBlockCount() {
+        if (_blockTotal <= 0) { return 0; }
+        var fraction = (PIN_STEPS >= 0)
+            ? (PIN_STEPS.toFloat() / 100.0)
+            : StackMetrics.stepFraction();
+        return (fraction * _blockTotal + 0.5).toNumber();
+    }
+
+    //! Earned blocks step up through four tones toward the newest one, so the
+    //! wall reads as courses laid over the day rather than one flat slab.
+    //! Blocks still to come keep the original three-shade texture untouched.
+    function blockShade(index, litCount, row, pattern) {
+        if (index >= litCount) {
+            var shade = (row + pattern) % 3;
+            if (shade == 0) { return StackTheme.BLOCK_LOW; }
+            return (shade == 1) ? StackTheme.BLOCK_MID : StackTheme.BLOCK_HIGH;
+        }
+        if (index == litCount - 1) { return StackTheme.BLOCK_FILL_EDGE; }
+        var tier = (index * 3) / litCount;
+        if (tier <= 0) { return StackTheme.BLOCK_FILL_1; }
+        return (tier == 1) ? StackTheme.BLOCK_FILL_2 : StackTheme.BLOCK_FILL_3;
     }
 
     //! One Y for both compositions. AOD used to sit 16px higher, so the date
