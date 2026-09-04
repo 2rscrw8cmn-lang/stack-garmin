@@ -25,7 +25,7 @@ Replace the current OFFSET implementation with the approved **STACK Hero Time** 
 
 ### Phase 2 — active face
 
-- render hour, colon, minute as separately colored Skomelr strings
+- render outlined white hours and filled white minutes as measured Skomelr strings
 - render actual Trainer Boi in the center negative space
 - implement segmented daily step-goal ring
 - implement top date/battery row
@@ -35,11 +35,8 @@ Replace the current OFFSET implementation with the approved **STACK Hero Time** 
 
 Add curated settings for:
 
-- hour color
-- minute color
-- colon color
-- ring mode: multicolor / single
-- ring single color
+- ring progress source
+- weekly running goal
 - metric color mode
 - Trainer Boi: full color / mono / off
 - three metric selections

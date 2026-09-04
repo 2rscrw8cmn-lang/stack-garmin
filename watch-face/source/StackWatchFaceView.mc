@@ -15,6 +15,11 @@ class StackWatchFaceView extends WatchUi.WatchFace {
     const METRIC_LEFT_X = 115;
     const METRIC_CENTER_X = 208;
     const METRIC_RIGHT_X = 301;
+    const RING_STEPS = 0;
+    const RING_INTENSITY_MINUTES = 1;
+    const RING_WEEKLY_RUN = 2;
+    const RING_BODY_BATTERY = 3;
+    const RING_OFF = 4;
 
     // Screenshot harness only. Keep disabled in commits.
     const PIN_TIME = -1;
@@ -27,17 +32,15 @@ class StackWatchFaceView extends WatchUi.WatchFace {
     var _sleeping = false;
 
     var _timeFont;
+    var _heroTimeFont;
+    var _heroOutlineFont;
     var _metricFont;
     var _utilityFont;
-    var _metricFallbackFont;
     var _trainerColor;
     var _trainerMono;
 
-    var _hourColor = 0;
-    var _colonColor = 3;
-    var _minuteColor = 5;
-    var _ringMode = 0;
-    var _ringColor = 0;
+    var _ringSource = RING_STEPS;
+    var _weeklyRunGoal = 20;
     var _metricColorMode = 0;
     var _metric1Color = 0;
     var _metric2Color = 5;
@@ -63,9 +66,13 @@ class StackWatchFaceView extends WatchUi.WatchFace {
     function loadResources() {
         try {
             _timeFont = WatchUi.loadResource(Rez.Fonts.StackTime);
+            _heroTimeFont = WatchUi.loadResource(Rez.Fonts.StackTimeHero);
+            _heroOutlineFont = WatchUi.loadResource(Rez.Fonts.StackTimeOutline);
             _metricFont = WatchUi.loadResource(Rez.Fonts.StackMetric);
         } catch (e) {
             _timeFont = null;
+            _heroTimeFont = null;
+            _heroOutlineFont = null;
             _metricFont = null;
         }
 
@@ -73,16 +80,20 @@ class StackWatchFaceView extends WatchUi.WatchFace {
             if (_timeFont == null) {
                 _timeFont = Gfx.getVectorFont({ :face => ["RobotoCondensedBold", "RobotoRegular"], :size => px(94) });
             }
+            if (_heroTimeFont == null) {
+                _heroTimeFont = Gfx.getVectorFont({ :face => ["RobotoCondensedBold", "RobotoRegular"], :size => px(104) });
+            }
+            if (_heroOutlineFont == null) { _heroOutlineFont = _heroTimeFont; }
             if (_metricFont == null) {
                 _metricFont = Gfx.getVectorFont({ :face => ["RobotoCondensedBold", "RobotoRegular"], :size => px(32) });
             }
-            _utilityFont = Gfx.getVectorFont({ :face => ["RobotoCondensedBold", "RobotoRegular"], :size => px(15) });
-            _metricFallbackFont = Gfx.getVectorFont({ :face => ["RobotoCondensedBold", "RobotoRegular"], :size => px(26) });
+            _utilityFont = Gfx.getVectorFont({ :face => ["RobotoCondensedBold", "RobotoRegular"], :size => px(26) });
         }
         if (_timeFont == null) { _timeFont = Gfx.FONT_NUMBER_MILD; }
+        if (_heroTimeFont == null) { _heroTimeFont = _timeFont; }
+        if (_heroOutlineFont == null) { _heroOutlineFont = _heroTimeFont; }
         if (_metricFont == null) { _metricFont = Gfx.FONT_SMALL; }
         if (_utilityFont == null) { _utilityFont = Gfx.FONT_XTINY; }
-        if (_metricFallbackFont == null) { _metricFallbackFont = Gfx.FONT_XTINY; }
 
         try {
             _trainerColor = WatchUi.loadResource(Rez.Drawables.TrainerBoiColor);
@@ -100,11 +111,8 @@ class StackWatchFaceView extends WatchUi.WatchFace {
     function loadSettings() {
         try {
             if (Application has :Properties) {
-                _hourColor = numberSetting("HourColor", _hourColor);
-                _colonColor = numberSetting("ColonColor", _colonColor);
-                _minuteColor = numberSetting("MinuteColor", _minuteColor);
-                _ringMode = numberSetting("RingMode", _ringMode);
-                _ringColor = numberSetting("RingColor", _ringColor);
+                _ringSource = numberSetting("RingSource", _ringSource);
+                _weeklyRunGoal = numberSetting("WeeklyRunGoal", _weeklyRunGoal);
                 _metricColorMode = numberSetting("MetricColorMode", _metricColorMode);
                 _metric1Color = numberSetting("Metric1Color", _metric1Color);
                 _metric2Color = numberSetting("Metric2Color", _metric2Color);
@@ -134,10 +142,31 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         WatchUi.requestUpdate();
     }
 
+    //! AMOLED products report panel state separately from watch-face sleep.
+    //! onEnterSleep fires while the panel is powering down too, so keying the
+    //! composition off _sleeping alone painted the always-on face for a moment
+    //! before the system blanked the screen - the AOD flash. DISPLAY_MODE_OFF
+    //! means draw nothing at all.
+    function displayOff() {
+        if (Sys has :getDisplayMode) {
+            return Sys.getDisplayMode() == Sys.DISPLAY_MODE_OFF;
+        }
+        return false;
+    }
+
+    function lowPower() {
+        if (Sys has :getDisplayMode) {
+            return Sys.getDisplayMode() == Sys.DISPLAY_MODE_LOW_POWER;
+        }
+        return _sleeping;
+    }
+
     function onUpdate(dc) {
         if (dc has :setAntiAlias) { dc.setAntiAlias(true); }
         dc.setColor(StackTheme.BG, StackTheme.BG);
         dc.clear();
+
+        if (displayOff()) { return; }
 
         StackMetrics.beginFrame();
         var clock = Sys.getClockTime();
@@ -147,73 +176,119 @@ class StackWatchFaceView extends WatchUi.WatchFace {
             hour = PIN_TIME / 100;
             minute = PIN_TIME % 100;
         }
-        var hourText = displayHour(hour).toString();
+        var hourText = twoDigits(displayHour(hour));
         var minuteText = twoDigits(minute);
 
-        if (_sleeping || PIN_SLEEP) {
-            drawAlwaysOn(dc, hourText, minuteText, hour, minute);
+        if (lowPower() || PIN_SLEEP) {
+            drawAlwaysOn(dc, hourText, minuteText, minute);
         } else {
             drawActive(dc, hourText, minuteText);
         }
     }
 
     function drawActive(dc, hourText, minuteText) {
+        drawStackBackground(dc);
         drawStepRing(dc);
         drawTopUtility(dc, 0, 0, false);
-        drawHeroTime(dc, hourText, minuteText, px(76),
-            StackTheme.palette(_hourColor), StackTheme.palette(_colonColor), StackTheme.palette(_minuteColor));
+        drawActiveHeroTime(dc, hourText, minuteText);
         drawTrainerBoi(dc);
-        drawMetricShelf(dc);
         drawMetrics(dc);
     }
 
-    //! AOD is intentionally a separate reduced composition: time plus quiet
-    //! date/battery only, with no ring, metrics, or Trainer Boi bitmap.
-    function drawAlwaysOn(dc, hourText, minuteText, hour, minute) {
-        var phase = ((hour * 60 + minute) / 5) % 8;
+    //! AOD carries the same time treatment as the active face - outlined hours,
+    //! filled minutes, same fonts, same size, same Y - plus the grayscale
+    //! runner, dropping only the masonry, ring and metrics. The composition
+    //! measures about 5.7% luminance, inside the AMOLED always-on budget, and
+    //! the per-minute shift keeps any one pixel from staying lit.
+    function drawAlwaysOn(dc, hourText, minuteText, minute) {
+        var phase = minute % 8;
         var dx = burnInX(phase);
         var dy = burnInY(phase);
         drawTopUtility(dc, dx, dy, true);
-        drawHeroTime(dc, hourText, minuteText, px(88) + dy, StackTheme.AOD, StackTheme.AOD, StackTheme.AOD);
-        dc.setColor(StackTheme.AOD_FAINT, StackTheme.BG);
-        dc.fillRectangle((_width / 2) - px(2) + dx, px(327) + dy, px(4), px(4));
-        dc.fillRectangle((_width / 2) - px(46) + dx, px(366) + dy, px(92), px(2));
+        drawHeroTime(dc, hourText, minuteText, dx, dy);
+        drawTrainerBoiBitmap(dc, _trainerMono, dx, dy);
     }
 
-    function drawHeroTime(dc, hourText, minuteText, y, hourColor, colonColor, minuteColor) {
-        var colon = ":";
-        var hourWidth = dc.getTextWidthInPixels(hourText, _timeFont);
-        var colonWidth = dc.getTextWidthInPixels(colon, _timeFont);
-        var minuteWidth = dc.getTextWidthInPixels(minuteText, _timeFont);
-        var total = hourWidth + colonWidth + minuteWidth;
-        var x = ((_width - total) / 2).toNumber();
-
-        dc.setColor(hourColor, Gfx.COLOR_TRANSPARENT);
-        dc.drawText(x, y, _timeFont, hourText, Gfx.TEXT_JUSTIFY_LEFT);
-        x += hourWidth;
-        dc.setColor(colonColor, Gfx.COLOR_TRANSPARENT);
-        dc.drawText(x, y, _timeFont, colon, Gfx.TEXT_JUSTIFY_LEFT);
-        x += colonWidth;
-        dc.setColor(minuteColor, Gfx.COLOR_TRANSPARENT);
-        dc.drawText(x, y, _timeFont, minuteText, Gfx.TEXT_JUSTIFY_LEFT);
+    //! Active Hero Time uses filled and outline-only atlases generated from the
+    //! same licensed Skomelr source. The outline interior stays transparent so
+    //! the masonry field remains the actual background behind the hour. AOD
+    //! shares this function so the two can never drift apart; dx/dy are the
+    //! always-on burn-in shift and are zero on the active face.
+    function drawActiveHeroTime(dc, hourText, minuteText) {
+        drawHeroTime(dc, hourText, minuteText, 0, 0);
     }
 
+    function drawHeroTime(dc, hourText, minuteText, dx, dy) {
+        var hourWidth = dc.getTextWidthInPixels(hourText, _heroOutlineFont);
+        var minuteWidth = dc.getTextWidthInPixels(minuteText, _heroTimeFont);
+        var x = ((_width - hourWidth - minuteWidth) / 2).toNumber() + dx;
+        var y = px(100) + dy;
+
+        dc.setColor(StackTheme.TEXT, Gfx.COLOR_TRANSPARENT);
+        dc.drawText(x, y, _heroOutlineFont, hourText, Gfx.TEXT_JUSTIFY_LEFT);
+        dc.drawText(x + hourWidth, y, _heroTimeFont, minuteText, Gfx.TEXT_JUSTIFY_LEFT);
+    }
+
+    //! Low-contrast masonry built from deterministic STACK blocks. Keeping the
+    //! pattern static avoids visual flicker and makes it inexpensive to redraw.
+    function drawStackBackground(dc) {
+        var widths = [52, 68, 44, 60];
+        var radius = px(181);
+        var centerX = _width / 2;
+        var centerY = _height / 2;
+        var gap = px(3);
+        var tileH = px(22);
+
+        for (var row = 0; row < 15; row++) {
+            var y = px(29 + row * 25);
+            var midY = y + tileH / 2;
+            var dy = midY - centerY;
+            var inside = radius * radius - dy * dy;
+            if (inside <= 0) { continue; }
+
+            var half = Math.sqrt(inside).toNumber();
+            var left = centerX - half + px(4);
+            var right = centerX + half - px(4);
+            var x = left;
+            var pattern = row % widths.size();
+
+            while (x < right) {
+                var w = px(widths[pattern]);
+                if (x + w > right) { w = right - x; }
+                if (w > px(10)) {
+                    var shade = (row + pattern) % 3;
+                    var blockColor = (shade == 0) ? StackTheme.BLOCK_LOW
+                        : ((shade == 1) ? StackTheme.BLOCK_MID : StackTheme.BLOCK_HIGH);
+                    dc.setColor(blockColor, StackTheme.BG);
+                    dc.fillRectangle(x, y, w, tileH);
+                }
+                x += w + gap;
+                pattern = (pattern + 1) % widths.size();
+            }
+        }
+    }
+
+    //! One Y for both compositions. AOD used to sit 16px higher, so the date
+    //! and battery visibly jumped the moment the face went always-on. The
+    //! battery glyph still drops out in AOD - that is a lit-pixel choice, and
+    //! it costs no movement.
     function drawTopUtility(dc, dx, dy, aod) {
         var color = aod ? StackTheme.AOD : StackTheme.TEXT;
-        var y = px(62) + dy;
+        var y = px(86) + dy;
         dc.setColor(color, Gfx.COLOR_TRANSPARENT);
         dc.drawText(px(108) + dx, y, _utilityFont, dateLabel(), Gfx.TEXT_JUSTIFY_LEFT | Gfx.TEXT_JUSTIFY_VCENTER);
         dc.drawText(px(284) + dx, y, _utilityFont, StackMetrics.batteryPercent().toString() + "%",
             Gfx.TEXT_JUSTIFY_RIGHT | Gfx.TEXT_JUSTIFY_VCENTER);
         if (!aod) {
-            dc.setColor(StackTheme.YELLOW, StackTheme.BG);
-            dc.fillRectangle(px(205) + dx, px(57) + dy, px(8), px(8));
-            StackMetrics.drawIcon(dc, StackMetrics.BATTERY, px(300) + dx, y, px(15), StackTheme.LIME);
+            StackMetrics.drawIcon(dc, StackMetrics.BATTERY, px(304) + dx, y, px(24), StackTheme.LIME);
         }
     }
 
     function drawStepRing(dc) {
-        var fraction = (PIN_STEPS >= 0) ? (PIN_STEPS.toFloat() / 100.0) : StackMetrics.stepFraction();
+        if (_ringSource == RING_OFF) { return; }
+        var fraction = (PIN_STEPS >= 0)
+            ? (PIN_STEPS.toFloat() / 100.0)
+            : StackMetrics.ringFraction(_ringSource, _weeklyRunGoal);
         if (fraction < 0.0) { fraction = 0.0; }
         if (fraction > 1.0) { fraction = 1.0; }
         var filled = (fraction * RING_VISIBLE_SEGMENTS + 0.5).toNumber();
@@ -228,7 +303,7 @@ class StackWatchFaceView extends WatchUi.WatchFace {
             var end = 215.0 + (i + 1) * segmentSpan - 2.0;
             var color = StackTheme.EMPTY;
             if (i - 1 < filled) {
-                color = (_ringMode == 1) ? StackTheme.palette(_ringColor) : ringSegmentColor(i);
+                color = ringSegmentColor(i);
             }
             dc.setColor(color, StackTheme.BG);
             dc.drawLine(ringX(start, radius), ringY(start, radius), ringX(end, radius), ringY(end, radius));
@@ -245,42 +320,26 @@ class StackWatchFaceView extends WatchUi.WatchFace {
     }
 
     function ringSegmentColor(index) {
-        if (index <= 2) { return StackTheme.CYAN; }
-        if (index <= 5) { return StackTheme.BLUE; }
-        if (index == 6) { return StackTheme.BRIGHT_BLUE; }
-        if (index <= 8) { return StackTheme.YELLOW; }
-        if (index <= 12) { return StackTheme.RED; }
-        return StackTheme.PURPLE;
+        if (index <= 2) { return StackTheme.GREEN_1; }
+        if (index <= 4) { return StackTheme.GREEN_2; }
+        if (index <= 6) { return StackTheme.GREEN_3; }
+        if (index <= 8) { return StackTheme.GREEN_4; }
+        if (index <= 10) { return StackTheme.GREEN_5; }
+        if (index <= 12) { return StackTheme.GREEN_6; }
+        return StackTheme.LIME;
     }
 
     function drawTrainerBoi(dc) {
-        if (_trainerMode == 2) { return; }
-        var bitmap = (_trainerMode == 1) ? _trainerMono : _trainerColor;
-        if (bitmap == null) { return; }
-        var x = ((_width - bitmap.getWidth()) / 2).toNumber();
-        dc.drawBitmap(x, px(202), bitmap);
+        drawTrainerBoiBitmap(dc, (_trainerMode == 1) ? _trainerMono : _trainerColor, 0, 0);
     }
 
-    function drawMetricShelf(dc) {
-        var y = px(301);
-        var left = px(82);
-        var right = px(334);
-        dc.setPenWidth(px(4));
-        dc.setColor(StackTheme.EMPTY, StackTheme.BG);
-        dc.drawLine(left, y, right, y);
-        dc.setColor(metricColor(0, _metric1), StackTheme.BG);
-        dc.drawLine(px(METRIC_LEFT_X - 12), y, px(METRIC_LEFT_X + 12), y);
-        dc.setColor(metricColor(1, _metric2), StackTheme.BG);
-        dc.drawLine(px(METRIC_CENTER_X - 12), y, px(METRIC_CENTER_X + 12), y);
-        dc.setColor(metricColor(2, _metric3), StackTheme.BG);
-        dc.drawLine(px(METRIC_RIGHT_X - 12), y, px(METRIC_RIGHT_X + 12), y);
-        dc.setPenWidth(1);
-
-        dc.setColor(StackTheme.EMPTY, StackTheme.BG);
-        for (var i = 0; i < 4; i++) {
-            dc.fillRectangle(px(160), px(319 + i * 13), px(4), px(8));
-            dc.fillRectangle(px(253), px(319 + i * 13), px(4), px(8));
-        }
+    //! AOD always passes the grayscale artwork. "Off" still means off in both
+    //! compositions, so the setting keeps working the way it reads.
+    function drawTrainerBoiBitmap(dc, bitmap, dx, dy) {
+        if (_trainerMode == 2) { return; }
+        if (bitmap == null) { return; }
+        var x = ((_width - bitmap.getWidth()) / 2).toNumber() + dx;
+        dc.drawBitmap(x, px(194) + dy, bitmap);
     }
 
     function drawMetrics(dc) {
@@ -295,26 +354,22 @@ class StackWatchFaceView extends WatchUi.WatchFace {
         StackMetrics.drawIcon(dc, metric, x, px(312), px(18), color);
 
         var value = StackMetrics.value(metric);
-        var font = StackMetrics.usesStackFont(metric) ? _metricFont : _metricFallbackFont;
-        dc.setColor(StackTheme.TEXT, Gfx.COLOR_TRANSPARENT);
-        dc.drawText(x, px(316), font, value, Gfx.TEXT_JUSTIFY_CENTER);
         dc.setColor(color, Gfx.COLOR_TRANSPARENT);
-        dc.drawText(x, px(358), _utilityFont, StackMetrics.label(metric),
-            Gfx.TEXT_JUSTIFY_CENTER | Gfx.TEXT_JUSTIFY_VCENTER);
+        dc.drawText(x, px(316), _metricFont, value, Gfx.TEXT_JUSTIFY_CENTER);
     }
 
     function metricColor(slot, metric) {
         if (_metricColorMode == 1) {
-            if (slot == 0) { return StackTheme.palette(_hourColor); }
-            if (slot == 1) { return StackTheme.palette(_colonColor); }
-            return StackTheme.palette(_minuteColor);
+            return StackTheme.TEXT;
         }
         if (_metricColorMode == 2) {
             if (slot == 0) { return StackTheme.palette(_metric1Color); }
             if (slot == 1) { return StackTheme.palette(_metric2Color); }
             return StackTheme.palette(_metric3Color);
         }
-        return StackMetrics.accent(metric);
+        if (slot == 0) { return StackTheme.CYAN; }
+        if (slot == 1) { return StackTheme.RED; }
+        return StackTheme.PURPLE;
     }
 
     function px(value) {

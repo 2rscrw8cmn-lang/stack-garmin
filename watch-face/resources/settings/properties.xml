@@ -1,10 +1,14 @@
 <properties>
   <!-- Palette ids are resolved by StackTheme.palette(). -->
   <property id="HourColor" type="number">0</property>
+  <!-- Retained for settings compatibility; Hero Time no longer draws a colon. -->
   <property id="ColonColor" type="number">3</property>
   <property id="MinuteColor" type="number">5</property>
+  <!-- Legacy ring color properties remain readable by older installs. -->
   <property id="RingMode" type="number">0</property>
   <property id="RingColor" type="number">0</property>
+  <property id="RingSource" type="number">0</property>
+  <property id="WeeklyRunGoal" type="number">20</property>
   <property id="MetricColorMode" type="number">0</property>
   <property id="Metric1Color" type="number">0</property>
   <property id="Metric2Color" type="number">5</property>

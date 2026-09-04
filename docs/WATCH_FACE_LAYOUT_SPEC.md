@@ -9,9 +9,9 @@ This is an implementation guide, not a requirement to hard-code every coordinate
 | Zone | Approx. bounds | Purpose |
 |---|---|---|
 | Outer ring | radius ~184–192 px | segmented daily-step progress |
-| Top utility | y 42–72 | day/date + battery |
-| Hero time | y 78–205 | Skomelr Quantum HH:MM |
-| Trainer Boi | y 205–300 | centered brand anchor |
+| Top utility | y 70–100 | day/date + battery |
+| Hero time | y 100–224 | Skomelr Quantum HHMM |
+| Trainer Boi | y 194–280 | foreground brand anchor overlapping the time |
 | Metric shelf | y 302–382 | three compact data slots |
 | Bottom breathing room | y 382–410 | optional tiny accent blocks only |
 
@@ -31,17 +31,19 @@ Also test:
 - `12:47`
 - `23:59` in 24-hour mode
 
-The implementation must measure glyph widths and center the composite hour + colon + minute group optically.
+The implementation must measure glyph widths and center the composite hour + minute group optically.
 
-Recommended 416 px hero font target: roughly **88–98 px**, tuned from the generated Skomelr atlas.
+Implemented 416 px active hero source size: approximately **104 px**, with a
+separate 94 px filled atlas retained for AOD.
 
-Draw hour, colon, and minute separately to allow independent colors.
+Draw the outlined hour and filled minute separately in white, without a colon.
 
 ## Trainer Boi
 
 Default active target height: **~82 px**.
 
-Start centered around x=208, with the full figure entirely below the hero time and above the metric shelf.
+Center at x=208 and draw after the hero time so the full-color figure overlaps the
+lower center of the digits while remaining above the metric shelf.
 
 Do not trace him into a generic block person. Preserve the actual full-color character silhouette and color separation.
 
@@ -63,7 +65,7 @@ Keep metadata roughly 12–15 px equivalent and quiet.
 
 - day/date left of center
 - battery right of center
-- a tiny colored square/block may separate them
+- no center separator block
 
 Do not add a top STACK wordmark.
 
@@ -81,7 +83,7 @@ Metric number size: roughly **28–34 px** Skomelr.
 
 Unit/label: 10–12 px system/mono font or a compact graphic mark.
 
-The metrics may use different accent colors, but the numeric values should remain highly legible.
+Each icon and value shares its slot color: cyan, red-orange, and purple by default.
 
 ## Active reference
 

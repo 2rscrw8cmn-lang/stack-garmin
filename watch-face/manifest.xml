@@ -7,6 +7,10 @@
     <iq:permissions>
       <!-- Body Battery is one of the selectable StackMetrics slots. -->
       <iq:uses-permission id="SensorHistory"/>
+      <!-- VO2 max is read from the athlete profile. -->
+      <iq:uses-permission id="UserProfile"/>
+      <!-- Weekly running distance comes from Garmin's native complication. -->
+      <iq:uses-permission id="ComplicationSubscriber"/>
     </iq:permissions>
     <iq:languages><iq:language>eng</iq:language></iq:languages>
     <iq:barrels/>

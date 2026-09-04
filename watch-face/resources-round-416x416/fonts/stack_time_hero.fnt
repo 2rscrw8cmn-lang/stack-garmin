@@ -1,0 +1,15 @@
+info face="stack_time_hero" size=104 bold=0 italic=0 charset="" unicode=1 stretchH=100 smooth=1 aa=1 padding=0,0,0,0 spacing=1,1 outline=0
+common lineHeight=162 base=97 scaleW=128 scaleH=1024 pages=1 packed=0 alphaChnl=1 redChnl=4 greenChnl=4 blueChnl=4
+page id=0 file="stack_time_hero.png"
+chars count=10
+char id=48 x=2 y=2 width=83 height=92 xoffset=0 yoffset=26 xadvance=83 page=0 chnl=15
+char id=49 x=2 y=96 width=46 height=92 xoffset=0 yoffset=26 xadvance=46 page=0 chnl=15
+char id=50 x=2 y=190 width=83 height=92 xoffset=0 yoffset=26 xadvance=83 page=0 chnl=15
+char id=51 x=2 y=284 width=83 height=92 xoffset=0 yoffset=26 xadvance=83 page=0 chnl=15
+char id=52 x=2 y=378 width=83 height=92 xoffset=0 yoffset=26 xadvance=83 page=0 chnl=15
+char id=53 x=2 y=472 width=83 height=92 xoffset=0 yoffset=26 xadvance=83 page=0 chnl=15
+char id=54 x=2 y=566 width=83 height=92 xoffset=0 yoffset=26 xadvance=83 page=0 chnl=15
+char id=55 x=2 y=660 width=83 height=92 xoffset=0 yoffset=26 xadvance=83 page=0 chnl=15
+char id=56 x=2 y=754 width=83 height=92 xoffset=0 yoffset=26 xadvance=83 page=0 chnl=15
+char id=57 x=2 y=848 width=83 height=92 xoffset=0 yoffset=26 xadvance=83 page=0 chnl=15
+kernings count=0

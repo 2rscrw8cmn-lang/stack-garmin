@@ -15,10 +15,9 @@ The previous **OFFSET** experiment is superseded by the current **STACK Hero Tim
 
 The face should communicate STACK without needing a STACK wordmark:
 
-- large **Skomelr Quantum** hero time
-- independently configurable hour / minute / colon colors
+- large four-digit **Skomelr Quantum** hero time with outlined hours and filled minutes
 - the actual full-color **Trainer Boi** artwork from `stack-run`
-- a segmented outer ring with a real purpose: **daily step-goal progress**
+- a segmented green outer ring with configurable Garmin-local progress sources
 - three configurable lower metrics, with defaults of distance, heart rate, and Body Battery
 - black AMOLED background
 - bright STACK color accents taken from the canonical Trainer Boi artwork
